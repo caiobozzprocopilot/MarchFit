@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "nutrisystem-1fdf6"
+  },
+  "targets": {
+    "nutrisystem-1fdf6": {
+      "hosting": {
+        "marchfit": [
+          "marchfit"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

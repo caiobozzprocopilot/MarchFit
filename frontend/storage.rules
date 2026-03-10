@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Fotos de progresso — só utilizadores autenticados podem ler e escrever
+    match /progresso/{userId}/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid != null
+                   && request.resource.size < 10 * 1024 * 1024  // máx 10 MB
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // Fotos de perfil (nutricionista / aluno)
+    match /perfil/{allPaths=**} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+  }
+}

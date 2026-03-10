@@ -33,10 +33,10 @@ export default function DashboardAdmin() {
   });
 
   const cards = [
-    { label: 'Total de Pacientes',    valor: dashboard?.totalAlunos ?? 0,               icone: Users,     gradiente: 'from-blue-500 to-indigo-600',  sombra: 'shadow-blue-500/20',   rota: '/admin/pacientes'   },
-    { label: 'Pacientes Ativos',      valor: dashboard?.alunosAtivos ?? 0,              icone: UserCheck,  gradiente: 'from-emerald-500 to-teal-600', sombra: 'shadow-emerald-500/20', rota: '/admin/pacientes'   },
-    { label: 'Consultas Hoje',     valor: dashboard?.consultasHoje ?? 0,             icone: Calendar,   gradiente: 'from-amber-500 to-orange-600', sombra: 'shadow-amber-500/20',  rota: '/admin/consultas'},
-    { label: 'Próximas 7 dias',    valor: dashboard?.proximasConsultas?.length ?? 0, icone: TrendingUp, gradiente: 'from-violet-500 to-purple-600',sombra: 'shadow-violet-500/20', rota: '/admin/consultas'},
+    { label: 'Total de Pacientes', valor: dashboard?.totalAlunos ?? 0,               icone: Users,      fundo: 'bg-blue-950/60 border-blue-900/50',        cor: 'text-blue-400',    iconeFundo: 'bg-blue-900/50',    rota: '/admin/pacientes' },
+    { label: 'Pacientes Ativos',  valor: dashboard?.alunosAtivos ?? 0,              icone: UserCheck,  fundo: 'bg-teal-950/60 border-teal-900/50',        cor: 'text-teal-400',    iconeFundo: 'bg-teal-900/50',    rota: '/admin/pacientes' },
+    { label: 'Consultas Hoje',    valor: dashboard?.consultasHoje ?? 0,             icone: Calendar,   fundo: 'bg-indigo-950/60 border-indigo-900/50',    cor: 'text-indigo-400',  iconeFundo: 'bg-indigo-900/50',  rota: '/admin/consultas' },
+    { label: 'Pr\u00f3ximas 7 dias',   valor: dashboard?.proximasConsultas?.length ?? 0, icone: TrendingUp, fundo: 'bg-slate-800/60 border-slate-700/50',      cor: 'text-slate-400',   iconeFundo: 'bg-slate-700/50',   rota: '/admin/consultas' },
   ];
 
   return (
@@ -66,17 +66,13 @@ export default function DashboardAdmin() {
                 <button
                   key={card.label}
                   onClick={() => navigate(card.rota)}
-                  className={`relative overflow-hidden bg-gradient-to-br ${card.gradiente} p-5 rounded-2xl shadow-lg ${card.sombra} hover:scale-[1.02] transition-all duration-200 text-left group`}
+                  className={`${card.fundo} border p-5 rounded-2xl hover:brightness-110 transition-all duration-200 text-left`}
                 >
-                  <div className="absolute -top-4 -right-4 w-24 h-24 bg-white/10 rounded-full" />
-                  <div className="absolute bottom-0 right-2 w-16 h-16 bg-white/5 rounded-full" />
-                  <div className="relative">
-                    <div className="inline-flex p-2.5 rounded-xl bg-white/20 mb-3">
-                      <Icone className="w-5 h-5 text-white" />
-                    </div>
-                    <p className="text-3xl font-black text-white">{card.valor}</p>
-                    <p className="text-sm text-white/70 mt-0.5 font-medium">{card.label}</p>
+                  <div className={`inline-flex p-2.5 rounded-xl ${card.iconeFundo} mb-3`}>
+                    <Icone className={`w-5 h-5 ${card.cor}`} />
                   </div>
+                  <p className="text-3xl font-black text-white">{card.valor}</p>
+                  <p className={`text-sm mt-0.5 font-medium ${card.cor} opacity-80`}>{card.label}</p>
                 </button>
               );
             })}
@@ -132,20 +128,20 @@ export default function DashboardAdmin() {
             <h2 className="font-bold text-white mb-4">Acesso Rápido</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
-                { label: 'Gerenciar Pacientes', rota: '/admin/pacientes',     icone: Users,         cor: 'text-blue-400',    fundo: 'bg-blue-500/10 border-blue-500/20'    },
-                { label: 'Banco de Alimentos',  rota: '/admin/alimentos',  icone: Apple,         cor: 'text-emerald-400', fundo: 'bg-emerald-500/10 border-emerald-500/20'},
-                { label: 'Banco de Exercícios', rota: '/admin/exercicios', icone: Dumbbell,      cor: 'text-orange-400',  fundo: 'bg-orange-500/10 border-orange-500/20'  },
-                { label: 'Receitas',            rota: '/admin/receitas',   icone: ChefHat,       cor: 'text-pink-400',    fundo: 'bg-pink-500/10 border-pink-500/20'      },
-                { label: 'Consultas',           rota: '/admin/consultas',  icone: Calendar,      cor: 'text-amber-400',   fundo: 'bg-amber-500/10 border-amber-500/20'    },
-                { label: 'Fórmulas',            rota: '/admin/formulas',   icone: FlaskConical,  cor: 'text-violet-400',  fundo: 'bg-violet-500/10 border-violet-500/20'  },
+                { label: 'Gerenciar Pacientes', rota: '/admin/pacientes',  icone: Users,        fundo: 'bg-blue-950/50 border-blue-900/40',     cor: 'text-blue-400'   },
+                { label: 'Banco de Alimentos',  rota: '/admin/alimentos', icone: Apple,        fundo: 'bg-teal-950/50 border-teal-900/40',     cor: 'text-teal-400'   },
+                { label: 'Banco de Exercícios', rota: '/admin/exercicios',icone: Dumbbell,     fundo: 'bg-cyan-950/50 border-cyan-900/40',     cor: 'text-cyan-400'   },
+                { label: 'Receitas',            rota: '/admin/receitas',  icone: ChefHat,      fundo: 'bg-indigo-950/50 border-indigo-900/40', cor: 'text-indigo-400' },
+                { label: 'Consultas',           rota: '/admin/consultas', icone: Calendar,     fundo: 'bg-slate-800/50 border-slate-700/40',   cor: 'text-slate-400'  },
+                { label: 'Fórmulas',            rota: '/admin/formulas',  icone: FlaskConical, fundo: 'bg-violet-950/50 border-violet-900/40', cor: 'text-violet-400' },
               ].map((item) => (
                 <button
                   key={item.rota}
                   onClick={() => navigate(item.rota)}
-                  className={`${item.fundo} border rounded-2xl p-4 text-left hover:scale-[1.02] transition-all duration-200 group`}
+                  className={`${item.fundo} border rounded-2xl p-4 text-left hover:brightness-110 transition-all duration-200 group`}
                 >
-                  <item.icone className={`w-6 h-6 ${item.cor} mb-3`} />
-                  <p className="font-semibold text-gray-300 text-sm group-hover:text-white transition-colors">{item.label}</p>
+                  <item.icone className={`w-5 h-5 ${item.cor} mb-3`} />
+                  <p className={`font-semibold text-sm ${item.cor} opacity-80 group-hover:opacity-100 transition-opacity`}>{item.label}</p>
                 </button>
               ))}
             </div>

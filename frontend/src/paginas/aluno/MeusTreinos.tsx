@@ -15,7 +15,7 @@ function CardFicha({ ficha }: { ficha: FichaTreino }) {
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
         <div>
-          <p className="font-semibold text-white">{ficha.nome}</p>
+          <p className="font-display tracking-wide text-white">{ficha.nome}</p>
           {ficha.descricao && (
             <p className="text-xs text-gray-500 mt-0.5">{ficha.descricao}</p>
           )}
@@ -35,7 +35,7 @@ function CardFicha({ ficha }: { ficha: FichaTreino }) {
                     {idx + 1}
                   </span>
                   <div>
-                    <p className="text-sm font-medium text-gray-200">
+                    <p className="text-sm font-semibold text-white">
                       {ef.exercicio?.nome ?? '—'}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
@@ -50,7 +50,7 @@ function CardFicha({ ficha }: { ficha: FichaTreino }) {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {ef.exercicio?.nivel && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${corNivel[ef.exercicio.nivel] ?? 'bg-gray-800 text-gray-400'}`}>
+                    <span className={`text-xs font-display uppercase tracking-wider px-2 py-0.5 rounded-full ${corNivel[ef.exercicio.nivel] ?? 'bg-gray-800 text-gray-400'}`}>
                       {ef.exercicio.nivel.charAt(0) + ef.exercicio.nivel.slice(1).toLowerCase()}
                     </span>
                   )}
@@ -90,7 +90,7 @@ export default function MeusTreinos() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function MeusTreinos() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Meus Treinos</h1>
+        <h1 className="text-2xl font-black text-white">Meus Treinos</h1>
         <p className="text-gray-500 text-sm mt-1">
           {fichasAtivas.length} ficha(s) ativa(s)
         </p>

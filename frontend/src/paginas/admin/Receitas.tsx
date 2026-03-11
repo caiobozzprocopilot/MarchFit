@@ -5,7 +5,7 @@ import { Search, Plus, X, Loader2, Trash2, Youtube, Users, ChevronDown } from 'l
 import type { Receita, Aluno } from '../../tipos';
 
 const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
-const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 
 interface FormReceita {
   nome: string;
@@ -37,7 +37,7 @@ function Acordeon({ label, content }: { label: string; content: string }) {
         onClick={() => setOpen((o) => !o)}
         className="w-full flex items-center justify-between px-3.5 py-2.5 bg-gray-800/60 hover:bg-gray-800 border border-gray-800 rounded-xl transition-colors text-left"
       >
-        <span className="text-xs font-bold text-gray-300 uppercase tracking-wider">{label}</span>
+        <span className="font-display uppercase tracking-wider text-xs text-gray-300">{label}</span>
         <ChevronDown className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
@@ -85,10 +85,10 @@ function CardReceita({ receita, onDeletar }: { receita: Receita; onDeletar: () =
       )}
       <div className="p-4 space-y-3">
         <div>
-          <h3 className="font-semibold text-white text-sm">{receita.nome}</h3>
+          <h3 className="font-display tracking-wide text-white text-sm">{receita.nome}</h3>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
             {receita.categoria && (
-              <span className="text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-display uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
                 {receita.categoria}
               </span>
             )}
@@ -191,7 +191,7 @@ export default function Receitas() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Receitas</h1>
+          <h1 className="text-2xl font-black text-white">Receitas</h1>
           <p className="text-gray-500 text-sm mt-0.5">{receitas.length} receita(s) cadastrada(s)</p>
         </div>
         <button

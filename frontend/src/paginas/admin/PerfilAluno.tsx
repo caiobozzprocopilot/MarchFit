@@ -93,7 +93,7 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
               <c.icone className={`w-4 h-4 ${c.cor}`} />
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">{c.label}</p>
+              <p className="font-display uppercase tracking-wider text-xs text-gray-500">{c.label}</p>
               <p className={`text-sm font-semibold mt-0.5 truncate ${c.valor === '—' ? 'text-gray-600' : 'text-white'}`}>{c.valor}</p>
             </div>
           </div>
@@ -102,7 +102,7 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
       <div className={`rounded-2xl border px-5 py-4 flex items-center gap-4 ${aluno.ativo ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-gray-800 border-gray-700'}`}>
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${aluno.ativo ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50' : 'bg-gray-600'}`} />
         <div>
-          <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Status</p>
+          <p className="font-display uppercase tracking-wider text-xs text-gray-500">Status</p>
           <p className={`text-sm font-bold mt-0.5 ${aluno.ativo ? 'text-emerald-400' : 'text-gray-500'}`}>{aluno.ativo ? 'Ativo' : 'Inativo'}</p>
         </div>
       </div>
@@ -333,19 +333,19 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
                 <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                   <div className="text-center min-w-[2.5rem]">
                     <p className="text-lg font-bold text-emerald-400 leading-tight">{item.series}</p>
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wide">séries</p>
+                    <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">séries</p>
                   </div>
                   <span className="text-gray-700 font-bold">×</span>
                   <div className="text-center min-w-[2.5rem]">
                     <p className="text-lg font-bold text-teal-400 leading-tight">{item.repeticoes}</p>
-                    <p className="text-[10px] text-gray-600 uppercase tracking-wide">reps</p>
+                    <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">reps</p>
                   </div>
                   {item.carga && (
                     <>
                       <span className="text-gray-700">·</span>
                       <div className="text-center">
                         <p className="text-sm font-semibold text-gray-300 leading-tight">{item.carga}</p>
-                        <p className="text-[10px] text-gray-600 uppercase tracking-wide">carga</p>
+                        <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">carga</p>
                       </div>
                     </>
                   )}
@@ -509,18 +509,18 @@ function AbaProgresso({ alunoId }: { alunoId: string }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 relative overflow-hidden">
           <div className="absolute -top-3 -right-3 w-16 h-16 bg-white/10 rounded-full" />
-          <p className="text-xs text-white/70 font-semibold uppercase tracking-wider">Peso atual</p>
+          <p className="font-display uppercase tracking-wider text-xs text-white/70">Peso atual</p>
           <p className="text-3xl font-black text-white mt-1">{ultimo?.peso ?? '—'}<span className="text-base font-medium ml-1">kg</span></p>
         </div>
         <div className="bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl p-4 relative overflow-hidden">
           <div className="absolute -top-3 -right-3 w-16 h-16 bg-white/10 rounded-full" />
-          <p className="text-xs text-white/70 font-semibold uppercase tracking-wider">IMC</p>
+          <p className="font-display uppercase tracking-wider text-xs text-white/70">IMC</p>
           <p className="text-3xl font-black text-white mt-1">{ultimo?.imc?.toFixed(1) ?? '—'}</p>
         </div>
       </div>
 
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <p className="text-sm font-bold text-white mb-4 flex items-center gap-2">
+        <p className="font-display uppercase tracking-wider text-sm text-white mb-4 flex items-center gap-2">
           <BarChart2 className="w-4 h-4 text-emerald-400" /> Evolução do Peso (kg)
         </p>
         <ResponsiveContainer width="100%" height={200}>
@@ -596,12 +596,12 @@ function AbaConsultas({ alunoId }: { alunoId: string }) {
           {consultas.map((c) => (
             <div key={c.id} className="px-5 py-4 flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-white">
+                <p className="text-sm font-display tracking-wide text-white">
                   {format(parseISO(c.dataHora), "dd 'de' MMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
                 </p>
                 {c.tipo && <p className="text-xs text-gray-500 mt-0.5">{c.tipo}</p>}
               </div>
-              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${corStatus[c.status] ?? 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
+              <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${corStatus[c.status] ?? 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
                 {c.status}
               </span>
             </div>
@@ -708,7 +708,7 @@ export default function PerfilAluno() {
             <button
               key={aba.key}
               onClick={() => setAbaAtiva(aba.key)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 flex-shrink-0 border ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-display uppercase tracking-wider text-sm whitespace-nowrap transition-all duration-200 flex-shrink-0 border ${
                 ativo
                   ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border-emerald-500/30'
                   : 'text-gray-500 hover:text-gray-300 hover:bg-gray-900 border-transparent'

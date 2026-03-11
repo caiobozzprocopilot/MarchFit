@@ -6,7 +6,7 @@ import { Loader2, Upload, Save, CheckCircle2, Info } from 'lucide-react';
 import type { Nutricionista } from '../../tipos';
 
 const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
-const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 
 export default function Config() {
   useAuth();
@@ -107,7 +107,7 @@ export default function Config() {
             )}
           </div>
           <div className="min-w-0">
-            <p className="font-bold text-white text-lg truncate">{form.nome || 'Nutricionista'}</p>
+            <p className="font-display tracking-wide text-white text-xl truncate">{form.nome || 'Nutricionista'}</p>
             <p className="text-sm text-gray-500 truncate">{form.email}</p>
             <input ref={fileRef} type="file" accept="image/*" className="hidden"
               onChange={(e) => {
@@ -175,7 +175,7 @@ export default function Config() {
       <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl px-5 py-4 flex gap-3">
         <Info className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm">
-          <p className="font-semibold text-blue-400 mb-0.5">Dica sobre WhatsApp</p>
+          <p className="font-display tracking-wide text-blue-400 mb-0.5">Dica sobre WhatsApp</p>
           <p className="text-blue-300/70">O número de WhatsApp é usado nos botões de contato no portal dos alunos. Inclua o código do país (ex: +5511988887777).</p>
         </div>
       </div>

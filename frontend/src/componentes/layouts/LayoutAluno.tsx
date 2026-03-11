@@ -41,7 +41,7 @@ export default function LayoutAluno() {
             </div>
             <div>
               <span className="text-xs text-gray-500">Bem-vindo,</span>
-              <p className="font-bold text-white text-sm leading-tight">{usuario?.nome?.split(' ')[0]}</p>
+              <p className="font-display tracking-wide text-white text-sm leading-tight">{usuario?.nome?.split(' ')[0]}</p>
             </div>
           </div>
           <button
@@ -95,7 +95,7 @@ export default function LayoutAluno() {
                   }`}>
                     <item.icone className="w-5 h-5 flex-shrink-0" />
                   </div>
-                  <span className="text-[9px] font-semibold truncate uppercase tracking-wide">{item.rotulo}</span>
+                  <span className="text-[9px] font-display truncate uppercase tracking-wide">{item.rotulo}</span>
                 </>
               )}
             </NavLink>

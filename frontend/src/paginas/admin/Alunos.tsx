@@ -65,14 +65,14 @@ export default function Alunos() {
   };
 
   const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
-  const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+  const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">Pacientes</h1>
+          <h1 className="text-2xl font-black text-white">Pacientes</h1>
           <p className="text-gray-500 text-sm mt-0.5">{alunos.length} aluno{alunos.length !== 1 && 's'} cadastrado{alunos.length !== 1 && 's'}</p>
         </div>
         <button
@@ -126,12 +126,12 @@ export default function Alunos() {
                   </div>
                 )}
                 <div>
-                  <p className="font-semibold text-white">{aluno.nome}</p>
+                  <p className="font-display tracking-wide text-white text-sm">{aluno.nome}</p>
                   <p className="text-xs text-gray-500">{aluno.email}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${
                   aluno.ativo
                     ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                     : 'bg-gray-800 text-gray-500 border border-gray-700'

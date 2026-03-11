@@ -7,8 +7,8 @@ import type { PlanoAlimentar, Refeicao, ItemRefeicao } from '../../tipos';
 function ItemMacro({ label, valor, cor }: { label: string; valor: number; cor: string }) {
   return (
     <div className={`rounded-xl px-3 py-2 ${cor} text-center`}>
-      <p className="text-xs opacity-70">{label}</p>
-      <p className="font-bold text-sm">{valor.toFixed(0)}g</p>
+      <p className="font-display uppercase tracking-wider text-xs opacity-70">{label}</p>
+      <p className="font-black text-sm">{valor.toFixed(0)}g</p>
     </div>
   );
 }
@@ -31,7 +31,7 @@ function CardRefeicao({ refeicao }: { refeicao: Refeicao }) {
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
         <div>
-          <p className="font-semibold text-white">{refeicao.nome}</p>
+        <p className="font-display tracking-wide text-white">{refeicao.nome}</p>
           {refeicao.horario && (
             <p className="text-xs text-gray-500 mt-0.5">{refeicao.horario}</p>
           )}
@@ -42,11 +42,11 @@ function CardRefeicao({ refeicao }: { refeicao: Refeicao }) {
       </div>
 
       {(refeicao.itens ?? []).length > 0 ? (
-        <div className="divide-y divide-gray-50">
+        <div className="divide-y divide-gray-800">
           {(refeicao.itens ?? []).map((item: ItemRefeicao) => (
             <div key={item.id} className="px-5 py-3 flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-800">{item.alimento?.nome ?? '—'}</p>
+                <p className="text-sm font-semibold text-white">{item.alimento?.nome ?? '—'}</p>
               </div>
               <span className="text-sm text-gray-500">
                 {item.quantidade}{item.unidade ?? 'g'}
@@ -59,10 +59,10 @@ function CardRefeicao({ refeicao }: { refeicao: Refeicao }) {
       )}
 
       {totais.calorias > 0 && (
-        <div className="px-5 py-3 bg-gray-50 grid grid-cols-3 gap-2">
-          <ItemMacro label="Prot." valor={totais.proteinas} cor="bg-blue-100 text-blue-800" />
-          <ItemMacro label="Carb." valor={totais.carboidratos} cor="bg-amber-100 text-amber-800" />
-          <ItemMacro label="Gord." valor={totais.gorduras} cor="bg-red-100 text-red-800" />
+        <div className="px-5 py-3 bg-gray-800/60 grid grid-cols-3 gap-2">
+          <ItemMacro label="Prot." valor={totais.proteinas} cor="bg-blue-500/20 text-blue-300" />
+          <ItemMacro label="Carb." valor={totais.carboidratos} cor="bg-amber-500/20 text-amber-300" />
+          <ItemMacro label="Gord." valor={totais.gorduras} cor="bg-red-500/20 text-red-300" />
         </div>
       )}
     </div>
@@ -84,7 +84,7 @@ export default function MeuPlanoAlimentar() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
       </div>
     );
   }
@@ -92,7 +92,7 @@ export default function MeuPlanoAlimentar() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Meu Plano Alimentar</h1>
+        <h1 className="text-2xl font-black text-white">Meu Plano Alimentar</h1>
         {planoAtivo && (
           <p className="text-gray-500 text-sm mt-1">{planoAtivo.nome}</p>
         )}
@@ -109,23 +109,23 @@ export default function MeuPlanoAlimentar() {
           {/* Metas de macros */}
           {planoAtivo.metaMacro && (
             <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5">
-              <p className="text-sm font-semibold text-emerald-400 mb-3">Meta Diária</p>
+              <p className="font-display uppercase tracking-wider text-sm text-emerald-400 mb-3">Meta Diária</p>
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div>
-                  <p className="text-xs text-emerald-500">Kcal</p>
-                  <p className="font-bold text-white">{(planoAtivo.metaMacro as any).calorias ?? '—'}</p>
+                  <p className="font-display uppercase tracking-wider text-xs text-emerald-500">Kcal</p>
+                  <p className="font-black text-white">{(planoAtivo.metaMacro as any).calorias ?? '—'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-emerald-500">Prot.</p>
-                  <p className="font-bold text-white">{(planoAtivo.metaMacro as any).proteinas ?? '—'}g</p>
+                  <p className="font-display uppercase tracking-wider text-xs text-emerald-500">Prot.</p>
+                  <p className="font-black text-white">{(planoAtivo.metaMacro as any).proteinas ?? '—'}g</p>
                 </div>
                 <div>
-                  <p className="text-xs text-emerald-500">Carb.</p>
-                  <p className="font-bold text-white">{(planoAtivo.metaMacro as any).carboidratos ?? '—'}g</p>
+                  <p className="font-display uppercase tracking-wider text-xs text-emerald-500">Carb.</p>
+                  <p className="font-black text-white">{(planoAtivo.metaMacro as any).carboidratos ?? '—'}g</p>
                 </div>
                 <div>
-                  <p className="text-xs text-emerald-500">Gord.</p>
-                  <p className="font-bold text-white">{(planoAtivo.metaMacro as any).gorduras ?? '—'}g</p>
+                  <p className="font-display uppercase tracking-wider text-xs text-emerald-500">Gord.</p>
+                  <p className="font-black text-white">{(planoAtivo.metaMacro as any).gorduras ?? '—'}g</p>
                 </div>
               </div>
             </div>

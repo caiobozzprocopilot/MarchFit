@@ -131,7 +131,7 @@ export default function PaginaLogin() {
           <div className="flex gap-2 mb-6 bg-gray-900 rounded-2xl p-1.5">
             {([['login', 'Entrar'], ['cadastro', 'Cadastrar']] as [Modo, string][]).map(([m, label]) => (
               <button key={m} type="button" onClick={() => { setModo(m); if (m === 'cadastro') setTipo('aluno'); setErro(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${modo === m ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'text-gray-500 hover:text-gray-300'}`}>
+                className={`flex-1 py-2.5 rounded-xl text-sm font-display uppercase tracking-wider transition-all duration-200 ${modo === m ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'text-gray-500 hover:text-gray-300'}`}>
                 {label}
               </button>
             ))}
@@ -142,7 +142,7 @@ export default function PaginaLogin() {
             <div className="flex gap-2 mb-6 bg-gray-900 rounded-2xl p-1.5">
               {(['nutricionista', 'aluno'] as TipoLogin[]).map((t) => (
                 <button key={t} type="button" onClick={() => setTipo(t)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${tipo === t ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-display uppercase tracking-wider transition-all duration-200 ${tipo === t ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
                   {t === 'nutricionista' ? <Leaf className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
                   {t === 'nutricionista' ? 'Nutricionista' : 'Paciente'}
                 </button>
@@ -153,7 +153,7 @@ export default function PaginaLogin() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {modo === 'cadastro' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Nome completo</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Nome completo</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required placeholder="Seu nome" className={inputCls} />
@@ -161,14 +161,14 @@ export default function PaginaLogin() {
               </div>
             )}
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Email</label>
+              <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Email</label>
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="seu@email.com" className={inputCls} />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Senha</label>
+              <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Senha</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" className={inputCls} />
@@ -176,7 +176,7 @@ export default function PaginaLogin() {
             </div>
             {modo === 'cadastro' && (
               <div>
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Confirmar senha</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Confirmar senha</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                   <input type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" className={inputCls} />

@@ -21,7 +21,7 @@ interface FormExercicio {
 
 const formVazio: FormExercicio = { nome: '', grupoMuscular: '', nivel: 'INICIANTE', descricao: '', equipamento: '', urlVideo: '' };
 const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
-const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 const selectCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all';
 
 function Paginacao({ total, pagina, setPagina }: { total: number; pagina: number; setPagina: (p: number) => void }) {
@@ -141,14 +141,14 @@ export default function Exercicios() {
             pagFiltrados.map((e, i) => (
               <div key={e.id} className={`flex items-center justify-between px-5 py-4 hover:bg-gray-800/60 transition-colors group ${i !== pagFiltrados.length - 1 ? 'border-b border-gray-800/60' : ''}`}>
                 <div className="min-w-0">
-                  <p className="font-semibold text-white truncate">{e.nome}</p>
+                  <p className="font-display tracking-wide text-white truncate">{e.nome}</p>
                   <div className="flex items-center gap-2 mt-0.5">
                     <p className="text-xs text-gray-500">{e.grupoMuscular}</p>
                     {e.equipamento && <><span className="text-gray-700">·</span><p className="text-xs text-gray-600 truncate">{e.equipamento}</p></>}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${corNivel[e.nivel] ?? 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider whitespace-nowrap ${corNivel[e.nivel] ?? 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
                     {e.nivel?.charAt(0) + e.nivel?.slice(1).toLowerCase()}
                   </span>
                   <button onClick={() => { if (confirm('Excluir exercício?')) mutDeletar.mutate(e.id); }}

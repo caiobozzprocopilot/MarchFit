@@ -65,8 +65,8 @@ export default function LayoutAdmin() {
               <span className="text-white font-bold text-xs">{usuario?.nome?.[0] ?? 'N'}</span>
             </div>
             <div className="min-w-0">
-              <p className="text-xs text-emerald-400 font-semibold">Nutricionista</p>
-              <p className="text-sm font-bold text-white truncate">{usuario?.nome}</p>
+              <p className="text-xs text-emerald-400 font-display uppercase tracking-wider">Nutricionista</p>
+              <p className="text-sm font-display tracking-wide text-white truncate">{usuario?.nome}</p>
             </div>
           </div>
         </div>
@@ -80,7 +80,7 @@ export default function LayoutAdmin() {
               end={item.exato}
               onClick={() => setMenuAberto(false)}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150 ${
+                `flex items-center gap-3 px-3 py-2.5 rounded-xl font-display uppercase tracking-wider text-sm transition-all duration-150 ${
                   isActive
                     ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border border-emerald-500/20'
                     : 'text-gray-500 hover:text-gray-200 hover:bg-gray-800'
@@ -97,7 +97,7 @@ export default function LayoutAdmin() {
         <div className="p-3 border-t border-gray-800">
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            className="flex items-center gap-3 w-full px-3 py-2.5 rounded-xl font-display uppercase tracking-wider text-sm text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
             <LogOut className="w-4 h-4" />
             Sair da conta

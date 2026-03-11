@@ -72,7 +72,7 @@ export default function DashboardAdmin() {
                     <Icone className={`w-5 h-5 ${card.cor}`} />
                   </div>
                   <p className="text-3xl font-black text-white">{card.valor}</p>
-                  <p className={`text-sm mt-0.5 font-medium ${card.cor} opacity-80`}>{card.label}</p>
+                  <p className={`font-display uppercase tracking-wider text-xs mt-0.5 ${card.cor} opacity-80`}>{card.label}</p>
                 </button>
               );
             })}
@@ -81,7 +81,7 @@ export default function DashboardAdmin() {
           {/* Próximas consultas */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="font-bold text-white">Próximas Consultas</h2>
+              <h2 className="font-display uppercase tracking-wider text-white">Próximas Consultas</h2>
               <button
                 onClick={() => navigate('/admin/consultas')}
                 className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1.5 transition-colors"
@@ -125,7 +125,7 @@ export default function DashboardAdmin() {
 
           {/* Atalhos */}
           <div>
-            <h2 className="font-bold text-white mb-4">Acesso Rápido</h2>
+            <h2 className="font-display uppercase tracking-wider text-white mb-4">Acesso Rápido</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[
                 { label: 'Gerenciar Pacientes', rota: '/admin/pacientes',  icone: Users,        fundo: 'bg-blue-950/50 border-blue-900/40',     cor: 'text-blue-400'   },
@@ -141,7 +141,7 @@ export default function DashboardAdmin() {
                   className={`${item.fundo} border rounded-2xl p-4 text-left hover:brightness-110 transition-all duration-200 group`}
                 >
                   <item.icone className={`w-5 h-5 ${item.cor} mb-3`} />
-                  <p className={`font-semibold text-sm ${item.cor} opacity-80 group-hover:opacity-100 transition-opacity`}>{item.label}</p>
+                  <p className={`font-display uppercase tracking-wider text-xs ${item.cor} opacity-80 group-hover:opacity-100 transition-opacity`}>{item.label}</p>
                 </button>
               ))}
             </div>

@@ -46,7 +46,7 @@ interface FormAlimento {
 
 const formVazio: FormAlimento = { nome: '', calorias: '', proteinas: '', carboidratos: '', gorduras: '', fibras: '', porcao: '100', unidadePorcao: 'g', grupo: '' };
 const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
-const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 
 export default function Alimentos() {
   const queryClient = useQueryClient();
@@ -157,7 +157,7 @@ export default function Alimentos() {
               <thead>
                 <tr className="border-b border-gray-800">
                   {['Nome', 'Kcal', 'Prot.', 'Carb.', 'Gord.', 'Porção', ''].map((h) => (
-                    <th key={h} className="text-left px-5 py-3.5 text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                    <th key={h} className="text-left px-5 py-3.5 text-xs font-display text-gray-500 uppercase tracking-wider whitespace-nowrap">
                       {h}
                     </th>
                   ))}

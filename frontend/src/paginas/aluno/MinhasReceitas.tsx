@@ -61,7 +61,7 @@ function CardReceita({ receita, aoClicar }: { receita: Receita; aoClicar: () => 
       )}
 
       <div className="p-4">
-        <h3 className="font-semibold text-white text-sm line-clamp-2 mb-2">
+        <h3 className="font-display tracking-wide text-white text-sm line-clamp-2 mb-2">
           {receita.nome}
         </h3>
 
@@ -102,7 +102,7 @@ export default function MinhasReceitas() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
       </div>
     );
   }
@@ -110,7 +110,7 @@ export default function MinhasReceitas() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Minhas Receitas</h1>
+        <h1 className="text-2xl font-black text-white">Minhas Receitas</h1>
         <p className="text-gray-500 text-sm mt-1">{receitas.length} receita(s)</p>
       </div>
 
@@ -119,7 +119,7 @@ export default function MinhasReceitas() {
         <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => setFiltro('')}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs font-display uppercase tracking-wider border transition-colors ${
               !filtro ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-gray-900 text-gray-400 border-gray-700'
             }`}
           >
@@ -129,7 +129,7 @@ export default function MinhasReceitas() {
             <button
               key={cat}
               onClick={() => setFiltro(cat!)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+              className={`px-3 py-1.5 rounded-full text-xs font-display uppercase tracking-wider border transition-colors ${
                 filtro === cat ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-gray-900 text-gray-400 border-gray-700'
               }`}
             >

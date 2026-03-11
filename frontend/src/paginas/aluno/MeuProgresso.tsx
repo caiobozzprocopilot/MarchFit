@@ -147,7 +147,7 @@ function ComparadorFotos({ registros }: { registros: RegistroProgresso[] }) {
 
   return (
     <div>
-      <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3 flex items-center gap-2">
+      <p className="font-display uppercase tracking-wider text-xs text-gray-500 mb-3 flex items-center gap-2">
         <Images className="w-3.5 h-3.5" /> Comparar fotos
       </p>
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
@@ -365,7 +365,7 @@ export default function MeuProgresso() {
           {/* Painel avaliação */}
           <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
             <div className="px-5 pt-4 pb-3 border-b border-gray-800">
-              <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Última avaliação</p>
+              <p className="font-display uppercase tracking-wider text-xs text-emerald-400">Última avaliação</p>
               <p className="text-white font-bold mt-0.5">
                 {format(parseISO(ultimo.registradoEm), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
               </p>
@@ -408,7 +408,7 @@ export default function MeuProgresso() {
 
           {/* Gráfico */}
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Gráfico de evolução</p>
+            <p className="font-display uppercase tracking-wider text-xs text-gray-500 mb-3">Gráfico de evolução</p>
             <div className="flex gap-2 mb-4">
               {(['peso', 'gordura', 'imc'] as const).map((g) => (
                 <button key={g} onClick={() => setGrafico(g)}
@@ -433,7 +433,7 @@ export default function MeuProgresso() {
 
           {/* Histórico */}
           <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold mb-3">Histórico</p>
+            <p className="font-display uppercase tracking-wider text-xs text-gray-500 mb-3">Histórico</p>
             <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
               {ordenados.slice().reverse().map((r) => (
                 <div key={r.id} className="px-5 py-3.5 flex items-center justify-between gap-3">

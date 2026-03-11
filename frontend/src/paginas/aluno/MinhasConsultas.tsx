@@ -36,7 +36,7 @@ export default function MinhasConsultas() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-40">
-        <Loader2 className="w-6 h-6 animate-spin text-green-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
       </div>
     );
   }
@@ -44,7 +44,7 @@ export default function MinhasConsultas() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Minhas Consultas</h1>
+        <h1 className="text-2xl font-black text-white">Minhas Consultas</h1>
         <p className="text-gray-500 text-sm mt-1">{consultas.length} consulta(s) no total</p>
       </div>
 
@@ -67,7 +67,7 @@ export default function MinhasConsultas() {
       {/* Próximas */}
       {proximas.length > 0 && (
         <div>
-          <h2 className="font-semibold text-gray-300 mb-3">Próximas Consultas</h2>
+          <h2 className="font-display uppercase tracking-wider text-gray-300 mb-3">Próximas Consultas</h2>
           <div className="space-y-3">
             {proximas.map((c) => (
               <div
@@ -75,7 +75,7 @@ export default function MinhasConsultas() {
                 className="bg-gray-900 border border-emerald-500/30 rounded-2xl px-5 py-4 flex items-center justify-between"
               >
                 <div>
-                  <p className="font-semibold text-white">
+                  <p className="font-display tracking-wide text-white">
                     {format(parseISO(c.dataHora), "EEEE, dd 'de' MMMM", { locale: ptBR })}
                   </p>
                   <p className="text-sm text-gray-400">
@@ -83,7 +83,7 @@ export default function MinhasConsultas() {
                     {c.tipo ? ` · ${c.tipo}` : ''}
                   </p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COR[c.status]}`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${STATUS_COR[c.status]}`}>
                   {c.status}
                 </span>
               </div>
@@ -95,7 +95,7 @@ export default function MinhasConsultas() {
       {/* Histórico */}
       {historico.length > 0 && (
         <div>
-          <h2 className="font-semibold text-gray-300 mb-3">Histórico</h2>
+          <h2 className="font-display uppercase tracking-wider text-gray-300 mb-3">Histórico</h2>
           <div className="bg-gray-900 border border-gray-800 rounded-2xl divide-y divide-gray-800">
             {historico.map((c) => (
               <div key={c.id} className="px-5 py-4 flex items-center justify-between">
@@ -111,7 +111,7 @@ export default function MinhasConsultas() {
                     <p className="text-xs text-gray-500 mt-1 italic">{c.observacoes}</p>
                   )}
                 </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_COR[c.status] ?? 'bg-gray-800 text-gray-400'}`}>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${STATUS_COR[c.status] ?? 'bg-gray-800 text-gray-400'}`}>
                   {c.status}
                 </span>
               </div>

@@ -110,12 +110,12 @@ export default function Formulas() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Fórmulas de Cálculo</h1>
+          <h1 className="text-2xl font-black text-white">Fórmulas de Cálculo</h1>
           <p className="text-gray-500 text-sm mt-0.5">FCR, IMC, Harris-Benedict e outras</p>
         </div>
         <button
           onClick={() => { setForm(formVazio); setErroForm(''); setMostrarModal(true); }}
-          className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+          className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all"
         >
           <Plus className="w-4 h-4" /> Nova Fórmula
         </button>
@@ -125,8 +125,8 @@ export default function Formulas() {
       {isLoading ? (
         <div className="flex items-center justify-center h-32"><Loader2 className="w-6 h-6 animate-spin text-green-600" /></div>
       ) : formulas.length === 0 ? (
-        <div className="text-center py-16 text-gray-400">
-          <FlaskConical className="w-12 h-12 text-gray-200 mx-auto mb-3" />
+        <div className="text-center py-16 text-gray-600">
+          <FlaskConical className="w-12 h-12 text-gray-700 mx-auto mb-3" />
           <p>Nenhuma fórmula cadastrada</p>
         </div>
       ) : (
@@ -137,32 +137,32 @@ export default function Formulas() {
               catch { return []; }
             })();
             return (
-              <div key={f.id} className="bg-white border border-gray-200 rounded-xl p-5">
+              <div key={f.id} className="bg-gray-900 border border-gray-800 rounded-xl p-5">
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div>
-                    <h3 className="font-semibold text-gray-900">{f.nome}</h3>
-                    {f.descricao && <p className="text-sm text-gray-400 mt-0.5">{f.descricao}</p>}
+                    <h3 className="font-display tracking-wide text-white">{f.nome}</h3>
+                    {f.descricao && <p className="text-sm text-gray-500 mt-0.5">{f.descricao}</p>}
                   </div>
                   <div className="flex gap-2">
                     <button
                       onClick={() => { setCalculando(f); setValoresCalc({}); setResultado(null); }}
-                      className="px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-medium hover:bg-blue-100"
+                      className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-medium hover:bg-blue-500/20 border border-blue-500/20"
                     >
                       Calcular
                     </button>
                     <button
                       onClick={() => { if (confirm('Excluir fórmula?')) mutDeletar.mutate(f.id); }}
-                      className="p-1.5 text-gray-300 hover:text-red-400"
+                      className="p-1.5 text-gray-600 hover:text-red-400"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-                <code className="block bg-gray-50 text-gray-700 text-xs rounded-lg px-3 py-2 font-mono">
+                <code className="block bg-gray-800 text-emerald-400 text-xs rounded-lg px-3 py-2 font-mono">
                   {f.formula}
                 </code>
                 {vars.length > 0 && (
-                  <p className="text-xs text-gray-400 mt-2">
+                  <p className="text-xs text-gray-600 mt-2">
                     Variáveis: {vars.map((v: any) => v.rotulo ?? v.chave).join(', ')}
                   </p>
                 )}
@@ -175,10 +175,10 @@ export default function Formulas() {
       {/* Modal Calculadora */}
       {calculando && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl w-full max-w-sm p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-900">{calculando.nome}</h3>
-              <button onClick={() => setCalculando(null)}><X className="w-5 h-5 text-gray-400" /></button>
+              <h3 className="font-semibold text-white">{calculando.nome}</h3>
+              <button onClick={() => setCalculando(null)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="space-y-3">
               {(() => {
@@ -186,26 +186,26 @@ export default function Formulas() {
                 catch { return []; }
               })().map((v: any) => (
                 <div key={v.chave}>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">{v.rotulo ?? v.chave}</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-1">{v.rotulo ?? v.chave}</label>
                   <input
                     type="number"
                     value={valoresCalc[v.chave] ?? ''}
                     onChange={(e) => setValoresCalc({ ...valoresCalc, [v.chave]: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                    className="w-full border border-gray-700 rounded-lg py-2.5 px-3 text-sm bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               ))}
             </div>
             <button
               onClick={() => calcularResultado(calculando)}
-              className="w-full mt-4 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-lg text-sm font-semibold"
+              className="w-full mt-4 bg-emerald-500 hover:bg-emerald-600 text-white py-2.5 rounded-lg text-sm font-semibold"
             >
               Calcular
             </button>
             {resultado !== null && (
-              <div className="mt-4 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-center">
-                <p className="text-xs text-green-600 mb-1">Resultado</p>
-                <p className="text-2xl font-bold text-green-700">{resultado.toFixed(2)}</p>
+              <div className="mt-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 text-center">
+                <p className="text-xs text-emerald-400 mb-1">Resultado</p>
+                <p className="text-2xl font-bold text-emerald-400">{resultado.toFixed(2)}</p>
               </div>
             )}
           </div>
@@ -215,10 +215,10 @@ export default function Formulas() {
       {/* Modal Nova Fórmula */}
       {mostrarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-900">Nova Fórmula</h2>
-              <button onClick={() => setMostrarModal(false)}><X className="w-5 h-5 text-gray-400" /></button>
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
+              <h2 className="font-semibold text-white">Nova Fórmula</h2>
+              <button onClick={() => setMostrarModal(false)}><X className="w-5 h-5 text-gray-500" /></button>
             </div>
             <div className="px-6 pt-4">
               <p className="text-xs text-gray-500 mb-2">Usar modelo:</p>
@@ -228,7 +228,7 @@ export default function Formulas() {
                     key={ex.nome}
                     type="button"
                     onClick={() => setForm({ nome: ex.nome, descricao: ex.descricao, formula: ex.formula, variaveis: ex.variaveis })}
-                    className="px-3 py-1 rounded-full border border-gray-200 text-xs text-gray-600 hover:border-green-400 hover:text-green-700"
+                    className="px-3 py-1 rounded-full border border-gray-700 text-xs text-gray-400 hover:border-emerald-500 hover:text-emerald-400"
                   >
                     {ex.nome}
                   </button>
@@ -236,33 +236,33 @@ export default function Formulas() {
               </div>
             </div>
             <form onSubmit={handleSubmit} className="px-6 pb-6 space-y-4">
-              {erroForm && <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">{erroForm}</div>}
+              {erroForm && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{erroForm}</div>}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-1">Nome *</label>
                 <input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required
-                  className="w-full border border-gray-300 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  className="w-full border border-gray-700 rounded-lg py-2.5 px-3 text-sm bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-1">Descrição</label>
                 <input value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-                  className="w-full border border-gray-300 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  className="w-full border border-gray-700 rounded-lg py-2.5 px-3 text-sm bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Fórmula *</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-1">Fórmula *</label>
                 <input value={form.formula} onChange={(e) => setForm({ ...form, formula: e.target.value })} required
                   placeholder="Ex: peso / ((altura/100) * (altura/100))"
-                  className="w-full border border-gray-300 rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  className="w-full border border-gray-700 rounded-lg py-2.5 px-3 text-sm font-mono bg-gray-800 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Variáveis (JSON)</label>
+                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-1">Variáveis (JSON)</label>
                 <textarea value={form.variaveis} onChange={(e) => setForm({ ...form, variaveis: e.target.value })} rows={5}
                   placeholder={'[\n  { "chave": "peso", "rotulo": "Peso (kg)" }\n]'}
-                  className="w-full border border-gray-300 rounded-lg py-2.5 px-3 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                  className="w-full border border-gray-700 rounded-lg py-2.5 px-3 text-sm font-mono bg-gray-800 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 resize-none" />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setMostrarModal(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-lg text-sm">Cancelar</button>
+                <button type="button" onClick={() => setMostrarModal(false)} className="flex-1 border border-gray-700 text-gray-400 hover:text-white py-2.5 rounded-lg text-sm transition-colors">Cancelar</button>
                 <button type="submit" disabled={mutCriar.isPending}
-                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-500/50 text-white py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-1">
                   {mutCriar.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                   Salvar
                 </button>

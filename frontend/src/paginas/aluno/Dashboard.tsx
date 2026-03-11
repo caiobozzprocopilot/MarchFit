@@ -55,7 +55,7 @@ export default function DashboardAluno() {
           onClick={() => navigate('/paciente/consultas')}
           className="w-full text-left bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg shadow-emerald-500/20 hover:from-emerald-400 hover:to-teal-500 transition-all"
         >
-          <p className="text-xs font-semibold text-emerald-100 uppercase tracking-wider mb-1">Próxima consulta</p>
+          <p className="font-display uppercase tracking-wider text-xs text-emerald-100 mb-1">Próxima consulta</p>
           <p className="text-xl font-bold">
             {format(parseISO(proximaConsulta.dataHora), "dd 'de' MMMM 'às' HH:mm", { locale: ptBR })}
           </p>
@@ -84,7 +84,7 @@ export default function DashboardAluno() {
                 <Icone className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-white text-sm">{item.label}</p>
+                <p className="font-display uppercase tracking-wider text-sm text-white">{item.label}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{item.desc}</p>
               </div>
               <ChevronRight className="w-4 h-4 text-gray-600 group-hover:text-gray-400 flex-shrink-0 transition-colors" />

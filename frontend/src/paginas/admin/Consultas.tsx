@@ -32,7 +32,7 @@ const FERIADOS_2026: Record<string, string> = {
 const DIAS_SEMANA = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'S\u00e1b'];
 
 const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
-const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
+const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 
 const STATUS_COR: Record<string, string> = {
   AGENDADA:  'bg-amber-500/10 text-amber-400 border-amber-500/30',
@@ -145,7 +145,7 @@ export default function Consultas() {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-base font-bold text-white capitalize">
+            <h2 className="text-base font-display uppercase tracking-wider text-white capitalize">
               {format(mesAtual, "MMMM yyyy", { locale: ptBR })}
             </h2>
             <button
@@ -159,7 +159,7 @@ export default function Consultas() {
           {/* Dias da semana */}
           <div className="grid grid-cols-7 px-4 mb-1">
             {DIAS_SEMANA.map((d) => (
-              <div key={d} className="text-center text-xs font-semibold text-gray-600 py-1.5 uppercase tracking-wider">
+              <div key={d} className="text-center text-xs font-display text-gray-600 py-1.5 uppercase tracking-wider">
                 {d}
               </div>
             ))}
@@ -258,7 +258,7 @@ export default function Consultas() {
           <div className="px-5 pt-5 pb-3 border-b border-gray-800">
             <div className="flex items-center gap-2">
               <CalendarDays className="w-4 h-4 text-emerald-400" />
-              <h3 className="font-bold text-white text-sm">
+              <h3 className="font-display tracking-wide text-white text-sm">
                 {diaSelecionado
                   ? format(diaSelecionado, "EEEE, dd 'de' MMMM", { locale: ptBR })
                   : 'Selecione um dia'}
@@ -285,7 +285,7 @@ export default function Consultas() {
                   <div key={c.id} className="bg-gray-800/60 border border-gray-700/50 rounded-xl p-3.5 space-y-2">
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="font-semibold text-white text-sm leading-tight">
+                        <p className="font-display tracking-wide text-white text-sm leading-tight">
                           {(c as any).aluno?.nome ?? 'Paciente'}
                         </p>
                         <p className="text-xs text-gray-500 mt-0.5">
@@ -293,7 +293,7 @@ export default function Consultas() {
                           {c.tipo && ` \u00b7 ${c.tipo}`}
                         </p>
                       </div>
-                      <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold border ${STATUS_COR[c.status] ?? ''}`}>
+                      <span className={`flex-shrink-0 px-2 py-0.5 rounded-full text-xs font-display uppercase tracking-wider border ${STATUS_COR[c.status] ?? ''}`}>
                         {c.status}
                       </span>
                     </div>

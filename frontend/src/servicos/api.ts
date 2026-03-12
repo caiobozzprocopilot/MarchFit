@@ -292,6 +292,15 @@ export const planosServico = {
   atualizar: async (id: string, dados: any) => { await updateDoc(doc(db, 'planos_alimentares', id), dados); return ok({ id, ...dados }); },
   deletar: async (id: string) => { await deleteDoc(doc(db, 'planos_alimentares', id)); return ok({ mensagem: 'Plano removido.' }); },
   refeicoes: {
+    carregarEditor: async (planoId: string) => {
+      const rfSnap = await getDocs(query(collection(db, 'refeicoes'), where('planoId', '==', planoId)));
+      const refeicoes: any[] = snap2arr(rfSnap).sort((a: any, b: any) => (a.ordem ?? 0) - (b.ordem ?? 0));
+      for (const rf of refeicoes) {
+        const itSnap = await getDocs(query(collection(db, 'itens_refeicao'), where('refeicaoId', '==', rf.id)));
+        rf.itens = snap2arr(itSnap);
+      }
+      return ok(refeicoes);
+    },
     adicionar: async (_pId: string, dados: any) => { const ref = await addDoc(collection(db, 'refeicoes'), { ...dados, criadoEm: ts() }); return ok({ id: ref.id, ...dados }); },
     atualizar: async (_pId: string, refeicaoId: string, dados: any) => { await updateDoc(doc(db, 'refeicoes', refeicaoId), dados); return ok({ id: refeicaoId, ...dados }); },
     deletar: async (_pId: string, refeicaoId: string) => { await deleteDoc(doc(db, 'refeicoes', refeicaoId)); return ok({ mensagem: 'Refeição removida.' }); },
@@ -434,5 +443,21 @@ export const formulasServico = {
   deletar: async (id: string) => { await deleteDoc(doc(db, 'formulas_calculo', id)); return ok({ mensagem: 'Removido.' }); },
 };
 
+// ─── Tabela TACO ─────────────────────────────────────────────────
+import { tacoAlimentos, type TacoAlimento } from '../dados/taco';
+
+export const tacoServico = {
+  /** Busca alimentos na tabela TACO local (sem Firestore). */
+  buscar: (q: string): TacoAlimento[] => {
+    if (!q.trim()) return tacoAlimentos;
+    const termo = q.toLowerCase().trim();
+    return tacoAlimentos.filter(
+      (a) =>
+        a.nome.toLowerCase().includes(termo) ||
+        a.categoria.toLowerCase().includes(termo),
+    );
+  },
+};
+
 export { fbSignOut as signOut };
-export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico };
+export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico };

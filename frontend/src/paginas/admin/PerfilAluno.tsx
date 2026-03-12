@@ -25,7 +25,9 @@ import {
   Phone,
   Target,
   Clock,
+  ChevronRight,
 } from 'lucide-react';
+import EditorPlanoAlimentar from './EditorPlanoAlimentar';
 import {
   LineChart,
   Line,
@@ -112,10 +114,11 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
 
 /* ------------------------------------------------------------------ */
 
-function AbaPlanoAlimentar({ alunoId }: { alunoId: string }) {
+function AbaPlanoAlimentar({ alunoId, alunoNome }: { alunoId: string; alunoNome: string }) {
   const queryClient = useQueryClient();
   const [mostrarModal, setMostrarModal] = useState(false);
   const [novoNome, setNovoNome] = useState('');
+  const [planoEditando, setPlanoEditando] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: planos = [], isLoading } = useQuery<PlanoAlimentar[]>({
     queryKey: ['planos', alunoId],
@@ -138,6 +141,17 @@ function AbaPlanoAlimentar({ alunoId }: { alunoId: string }) {
 
   if (isLoading) return <div className="flex justify-center pt-10"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>;
 
+  if (planoEditando) {
+    return (
+      <EditorPlanoAlimentar
+        planoId={planoEditando.id}
+        planoNome={planoEditando.nome}
+        alunoNome={alunoNome}
+        onVoltar={() => setPlanoEditando(null)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
@@ -154,7 +168,11 @@ function AbaPlanoAlimentar({ alunoId }: { alunoId: string }) {
       ) : (
         <div className="space-y-2">
           {planos.map((p) => (
-            <div key={p.id} className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 flex items-center justify-between transition-colors group">
+            <div
+              key={p.id}
+              onClick={() => setPlanoEditando({ id: p.id, nome: p.nome })}
+              className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 flex items-center justify-between transition-colors group cursor-pointer"
+            >
               <div>
                 <p className="font-semibold text-white">{p.nome}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{p.refeicoes?.length ?? 0} refeição(ões)</p>
@@ -163,9 +181,13 @@ function AbaPlanoAlimentar({ alunoId }: { alunoId: string }) {
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${p.ativo ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
                   {p.ativo ? 'Ativo' : 'Inativo'}
                 </span>
-                <button onClick={() => { if (confirm('Excluir este plano?')) mutDeletar.mutate(p.id); }} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
+                <button
+                  onClick={(e) => { e.stopPropagation(); if (confirm('Excluir este plano?')) mutDeletar.mutate(p.id); }}
+                  className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
+                >
                   <Trash2 className="w-4 h-4" />
                 </button>
+                <ChevronRight className="w-4 h-4 text-gray-600" />
               </div>
             </div>
           ))}
@@ -724,7 +746,7 @@ export default function PerfilAluno() {
       {/* ── Tab Content ── */}
       <div>
         {abaAtiva === 'dados'     && <AbaDados aluno={aluno} />}
-        {abaAtiva === 'plano'     && <AbaPlanoAlimentar alunoId={id!} />}
+        {abaAtiva === 'plano'     && <AbaPlanoAlimentar alunoId={id!} alunoNome={aluno.nome} />}
         {abaAtiva === 'treino'    && <AbaFichaTreino alunoId={id!} />}
         {abaAtiva === 'progresso' && <AbaProgresso alunoId={id!} />}
         {abaAtiva === 'consultas' && <AbaConsultas alunoId={id!} />}

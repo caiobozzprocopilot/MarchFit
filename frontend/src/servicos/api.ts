@@ -2,8 +2,8 @@ import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc,
   deleteDoc, query, where, setDoc, deleteField,
 } from 'firebase/firestore';
-import { signInWithEmailAndPassword, signOut as fbSignOut, createUserWithEmailAndPassword, signInWithPopup } from 'firebase/auth';
-import { auth, db, googleProvider } from '../lib/firebase';
+import { signInWithEmailAndPassword, signOut as fbSignOut, createUserWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
+import { auth, db, googleProvider, authSecundario } from '../lib/firebase';
 
 // helpers
 const snap2arr = (snap: any) => snap.docs.map((d: any) => ({ id: d.id, ...d.data() }));
@@ -79,6 +79,7 @@ export const autenticacaoServico = {
       const snap = await getDocs(query(collection(db, 'alunos'), where('email', '==', email)));
       if (snap.empty) throw { response: { data: { mensagem: 'Aluno não encontrado no sistema.' } } };
       const aluno = snap.docs[0].data() as any;
+      if (aluno.ativo === false) throw { response: { data: { mensagem: 'Seu acesso foi bloqueado. Entre em contato com seu nutricionista.' } } };
       return ok({ token, usuario: { id: snap.docs[0].id, nome: aluno.nome, email: aluno.email, perfil: 'PACIENTE' } });
     } catch (e: any) {
       if (e?.response) throw e;
@@ -118,6 +119,15 @@ export const autenticacaoServico = {
   vincularGoogle: async () => {
     // Substituído por redirect — não usado ativamente
     return ok({ mensagem: '' });
+  },
+
+  esqueceuSenha: async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email);
+      return ok({ mensagem: 'Email de redefinição enviado.' });
+    } catch (e: any) {
+      throw { response: { data: { mensagem: firebaseErrMsg(e?.code ?? '', e) } } };
+    }
   },
 };
 
@@ -191,8 +201,9 @@ export const alunosServico = {
     const nutriId = await getNutriId();
     let id: string;
     try {
-      const c = await createUserWithEmailAndPassword(auth, dados.email, dados.senha || 'nutri@123');
+      const c = await createUserWithEmailAndPassword(authSecundario, dados.email, dados.senha || 'nutri@123');
       id = c.user.uid;
+      await fbSignOut(authSecundario); // desconecta da instância secundária imediatamente
     } catch (e: any) {
       if (e?.code === 'auth/email-already-in-use') {
         // user already has a Firebase Auth account — find or use existing
@@ -212,6 +223,11 @@ export const alunosServico = {
     await updateDoc(doc(db, 'alunos', id), rest);
     return ok({ id, ...rest });
   },
+  toggleAtivo: async (id: string, ativo: boolean) => {
+    await updateDoc(doc(db, 'alunos', id), { ativo });
+    return ok({ mensagem: ativo ? 'Acesso liberado.' : 'Acesso bloqueado.' });
+  },
+  remover: async (id: string) => { await deleteDoc(doc(db, 'alunos', id)); return ok({ mensagem: 'Paciente removido.' }); },
   deletar: async (id: string) => { await updateDoc(doc(db, 'alunos', id), { ativo: false }); return ok({ mensagem: 'Aluno desativado.' }); },
   atualizarFoto: async (id: string, formData: FormData) => {
     const file = formData.get('foto') as File;

@@ -16,3 +16,8 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Instância secundária usada apenas para criar contas de alunos
+// sem derrubar a sessão do nutricionista logado
+const appSecundario = initializeApp(firebaseConfig, 'secundario');
+export const authSecundario = getAuth(appSecundario);

@@ -2,10 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contextos/autenticacao';
 import { autenticacaoServico } from '../servicos/api';
-import { Lock, Mail, Loader2, Leaf, Zap, User } from 'lucide-react';
+import { Lock, Mail, Loader2, Zap } from 'lucide-react';
+import LogoMarchFit from '../componentes/LogoMarchFit';
 
 type TipoLogin = 'nutricionista' | 'aluno';
-type Modo = 'login' | 'cadastro';
 
 function GoogleIcon() {
   return (
@@ -20,14 +20,15 @@ function GoogleIcon() {
 
 export default function PaginaLogin() {
   const [tipo, setTipo] = useState<TipoLogin>('nutricionista');
-  const [modo, setModo] = useState<Modo>('login');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
-  const [nome, setNome] = useState('');
-  const [confirmarSenha, setConfirmarSenha] = useState('');
   const [erro, setErro] = useState('');
   const [carregando, setCarregando] = useState(false);
   const [carregandoGoogle, setCarregandoGoogle] = useState(false);
+  const [resetMode, setResetMode] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetEnviado, setResetEnviado] = useState(false);
+  const [resetErro, setResetErro] = useState('');
   const { login, estaAutenticado, usuario } = useAuth();
   const navigate = useNavigate();
   const jaNavegouRef = useRef(false);
@@ -43,19 +44,7 @@ export default function PaginaLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro('');
-    if (modo === 'cadastro') {
-      if (senha !== confirmarSenha) { setErro('As senhas n\u00e3o coincidem.'); return; }
-      if (senha.length < 6) { setErro('A senha deve ter pelo menos 6 caracteres.'); return; }
-      setCarregando(true);
-      try {
-        const { data } = await autenticacaoServico.registrarAluno({ nome, email, senha });
-        login(data.token, data.usuario);
-        navigate('/paciente', { replace: true });
-      } catch (e: any) {
-        setErro(e?.response?.data?.mensagem || 'Erro ao criar conta.');
-      } finally { setCarregando(false); }
-      return;
-    }
+
     setCarregando(true);
     try {
       const fn = tipo === 'nutricionista' ? autenticacaoServico.loginNutricionista : autenticacaoServico.loginAluno;
@@ -67,8 +56,7 @@ export default function PaginaLogin() {
     } finally { setCarregando(false); }
   };
 
-  const handleGoogle = async () => {
-    setErro('');
+  const handleGoogle = async () => {    setErro('');
     setCarregandoGoogle(true);
     try {
       await autenticacaoServico.loginGoogle();
@@ -77,6 +65,18 @@ export default function PaginaLogin() {
       const msg = e?.response?.data?.mensagem || '';
       if (msg) setErro(msg);
       setCarregandoGoogle(false);
+    }
+  };
+
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetErro('');
+    if (!resetEmail.trim()) { setResetErro('Informe seu email.'); return; }
+    try {
+      await autenticacaoServico.esqueceuSenha(resetEmail.trim());
+      setResetEnviado(true);
+    } catch (err: any) {
+      setResetErro(err?.response?.data?.mensagem || 'Erro ao enviar email.');
     }
   };
 
@@ -112,54 +112,27 @@ export default function PaginaLogin() {
       <div className="flex-1 flex items-center justify-center bg-gray-950 p-6">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
-              <Leaf className="w-5 h-5 text-white" />
-            </div>
+            <LogoMarchFit className="w-10 h-10" />
             <span className="text-xl font-black text-white">MarchFit</span>
           </div>
 
           <div className="mb-8">
-            <h2 className="text-3xl font-black text-white">
-              {modo === 'cadastro' ? 'Criar conta' : 'Bem-vindo de volta'}
-            </h2>
-            <p className="text-gray-400 mt-1.5 text-sm">
-              {modo === 'cadastro' ? 'Crie sua conta de aluno gratuitamente' : 'Entre com sua conta para continuar'}
-            </p>
+            <h2 className="text-3xl font-black text-white">Bem-vindo de volta</h2>
+            <p className="text-gray-400 mt-1.5 text-sm">Entre com sua conta para continuar</p>
           </div>
 
-          {/* Entrar / Cadastrar */}
+          {/* Nutricionista / Aluno */}
           <div className="flex gap-2 mb-6 bg-gray-900 rounded-2xl p-1.5">
-            {([['login', 'Entrar'], ['cadastro', 'Cadastrar']] as [Modo, string][]).map(([m, label]) => (
-              <button key={m} type="button" onClick={() => { setModo(m); if (m === 'cadastro') setTipo('aluno'); setErro(''); }}
-                className={`flex-1 py-2.5 rounded-xl text-sm font-display uppercase tracking-wider transition-all duration-200 ${modo === m ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/25' : 'text-gray-500 hover:text-gray-300'}`}>
-                {label}
+            {(['nutricionista', 'aluno'] as TipoLogin[]).map((t) => (
+              <button key={t} type="button" onClick={() => setTipo(t)}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-display uppercase tracking-wider transition-all duration-200 ${tipo === t ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                {t === 'nutricionista' ? <LogoMarchFit className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+                {t === 'nutricionista' ? 'Nutricionista' : 'Paciente'}
               </button>
             ))}
           </div>
 
-          {/* Nutricionista / Aluno (apenas login) */}
-          {modo === 'login' && (
-            <div className="flex gap-2 mb-6 bg-gray-900 rounded-2xl p-1.5">
-              {(['nutricionista', 'aluno'] as TipoLogin[]).map((t) => (
-                <button key={t} type="button" onClick={() => setTipo(t)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-display uppercase tracking-wider transition-all duration-200 ${tipo === t ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-                  {t === 'nutricionista' ? <Leaf className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-                  {t === 'nutricionista' ? 'Nutricionista' : 'Paciente'}
-                </button>
-              ))}
-            </div>
-          )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
-            {modo === 'cadastro' && (
-              <div>
-                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Nome completo</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required placeholder="Seu nome" className={inputCls} />
-                </div>
-              </div>
-            )}
             <div>
               <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Email</label>
               <div className="relative">
@@ -173,16 +146,14 @@ export default function PaginaLogin() {
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
                 <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" className={inputCls} />
               </div>
+              <button
+                type="button"
+                onClick={() => { setResetMode(true); setResetEmail(email); setResetEnviado(false); setResetErro(''); }}
+                className="mt-1.5 text-xs text-gray-500 hover:text-emerald-400 transition-colors float-right"
+              >
+                Esqueci minha senha
+              </button>
             </div>
-            {modo === 'cadastro' && (
-              <div>
-                <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Confirmar senha</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                  <input type="password" value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)} required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" className={inputCls} />
-                </div>
-              </div>
-            )}
             {erro && (
               <div className="flex items-start gap-3 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3">
                 <span className="shrink-0 mt-0.5">&#9888;</span>
@@ -192,7 +163,7 @@ export default function PaginaLogin() {
             <button type="submit" disabled={carregando}
               className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-60 text-white font-bold py-3.5 rounded-xl transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 mt-2">
               {carregando && <Loader2 className="w-5 h-5 animate-spin" />}
-              {carregando ? (modo === 'cadastro' ? 'Criando conta...' : 'Entrando...') : (modo === 'cadastro' ? 'Criar conta' : 'Entrar')}
+              {carregando ? 'Entrando...' : 'Entrar'}
             </button>
           </form>
 
@@ -208,11 +179,44 @@ export default function PaginaLogin() {
             {carregandoGoogle ? 'Aguarde...' : 'Continuar com Google'}
           </button>
 
+          {/* Painel de resetar senha */}
+          {resetMode && (
+            <div className="mt-4 bg-gray-900 border border-gray-800 rounded-2xl p-5 space-y-3">
+              <p className="text-sm text-white font-semibold">Redefinir senha</p>
+              {resetEnviado ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-emerald-400">&#10003; Email enviado! Verifique sua caixa de entrada e clique no link para criar uma nova senha.</p>
+                  <button type="button" onClick={() => setResetMode(false)}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-sm font-bold">
+                    Voltar ao login
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleReset} className="space-y-3">
+                  <input type="email" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="seu@email.com"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500" />
+                  {resetErro && <p className="text-xs text-red-400">{resetErro}</p>}
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setResetMode(false)}
+                      className="flex-1 py-2.5 rounded-xl border border-gray-700 text-gray-400 text-sm hover:bg-gray-800 transition-all">
+                      Cancelar
+                    </button>
+                    <button type="submit" disabled={!resetEmail.trim()}
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-50 text-white text-sm font-bold">
+                      Enviar link
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
           {import.meta.env.DEV && (
             <div className="mt-6 pt-6 border-t border-gray-800">
               <p className="text-xs text-gray-600 text-center mb-3">Acesso rápido (dev)</p>
               <button type="button"
-                onClick={() => { setEmail('admin@nutrisistema.com'); setSenha('nutri123'); setTipo('nutricionista'); setModo('login'); }}
+                onClick={() => { setEmail('admin@nutrisistema.com'); setSenha('nutri123'); setTipo('nutricionista'); }}
                 className="w-full text-xs text-emerald-500 hover:text-emerald-400 py-2 bg-gray-900 rounded-xl border border-gray-800 transition-colors">
                 Preencher credenciais de admin
               </button>

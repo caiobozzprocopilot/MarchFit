@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contextos/autenticacao';
+import LogoMarchFit from '../LogoMarchFit';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -9,7 +10,6 @@ import {
   Calendar,
   LogOut,
   MessageCircle,
-  Leaf,
 } from 'lucide-react';
 
 const itensMenu = [
@@ -36,9 +36,7 @@ export default function LayoutAluno() {
       <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
         <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
-              <Leaf className="w-4 h-4 text-white" />
-            </div>
+            <LogoMarchFit className="w-8 h-8" />
             <div>
               <span className="text-xs text-gray-500">Bem-vindo,</span>
               <p className="font-display tracking-wide text-white text-sm leading-tight">{usuario?.nome?.split(' ')[0]}</p>

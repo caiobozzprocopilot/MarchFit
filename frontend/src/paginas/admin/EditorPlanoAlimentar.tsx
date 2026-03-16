@@ -1,14 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { planosServico } from '../../servicos/api';
+import { planosServico, receitasServico } from '../../servicos/api';
 import { tacoAlimentos, categoriasTaco } from '../../dados/taco';
 import type { TacoAlimento } from '../../dados/taco';
+import type { IngredienteReceita } from '../../tipos';
 import PlanoAlimentarPDF from './PlanoAlimentarPDF';
 import {
   ArrowLeft, Plus, Trash2, Search, Loader2, Clock,
   X, ChevronDown, ChevronUp, Utensils, FileDown,
-  Droplets, Dumbbell, Check,
+  Droplets, Dumbbell, Check, BookOpen,
 } from 'lucide-react';
 
 // ── Types ────────────────────────────────────────────────────────
@@ -199,6 +200,121 @@ function TemplateSelector({
   );
 }
 
+// ── Recipe Search Panel ──────────────────────────────────────────
+type ReceitaSimples = {
+  id: string;
+  nome: string;
+  categoria?: string;
+  ingredientesEstruturados?: IngredienteReceita[];
+};
+
+function BuscaReceita({
+  onInserir,
+  onFechar,
+  inserindo,
+}: {
+  onInserir: (ingredientes: IngredienteReceita[]) => void;
+  onFechar: () => void;
+  inserindo: boolean;
+}) {
+  const [receitaSel, setReceitaSel] = useState<ReceitaSimples | null>(null);
+
+  const { data: receitas = [], isLoading } = useQuery<ReceitaSimples[]>({
+    queryKey: ['receitas'],
+    queryFn: () => receitasServico.listar().then((r: any) => r.data),
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const comIngredientes = receitas.filter(
+    (r) => r.ingredientesEstruturados && r.ingredientesEstruturados.length > 0,
+  );
+
+  const totalMacros = receitaSel?.ingredientesEstruturados?.reduce(
+    (acc, ing) => ({
+      kcal: acc.kcal + ing.caloriasP100g * ing.quantidade / 100,
+      prot: acc.prot + ing.proteinasP100g * ing.quantidade / 100,
+    }),
+    { kcal: 0, prot: 0 },
+  ) ?? { kcal: 0, prot: 0 };
+
+  if (receitaSel) {
+    return (
+      <div className="border-t border-gray-800 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <button onClick={() => setReceitaSel(null)} className="text-xs text-gray-500 hover:text-white transition-colors">
+            ← Voltar
+          </button>
+          <button onClick={onFechar} className="ml-auto p-1.5 text-gray-600 hover:text-white transition-colors rounded-lg hover:bg-gray-800">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white">{receitaSel.nome}</p>
+          <p className="text-xs text-gray-500">{r1(totalMacros.kcal)} kcal · {r1(totalMacros.prot)}g P</p>
+        </div>
+        <div className="space-y-0.5 max-h-48 overflow-y-auto">
+          {(receitaSel.ingredientesEstruturados ?? []).map((ing, i) => (
+            <div key={i} className="flex justify-between items-center text-xs py-1.5 border-b border-gray-800/60">
+              <span className="text-gray-200">{ing.nome}</span>
+              <span className="text-gray-500 ml-2 flex-shrink-0">
+                {ing.quantidade}g · {r1(ing.caloriasP100g * ing.quantidade / 100)} kcal
+              </span>
+            </div>
+          ))}
+        </div>
+        <button
+          onClick={() => onInserir(receitaSel.ingredientesEstruturados ?? [])}
+          disabled={inserindo || !receitaSel.ingredientesEstruturados?.length}
+          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-400 hover:to-purple-400 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all"
+        >
+          {inserindo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+          Inserir {receitaSel.ingredientesEstruturados?.length ?? 0} ingrediente(s)
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-t border-gray-800 p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <BookOpen className="w-4 h-4 text-violet-400" />
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex-1">Inserir Receita</p>
+        <button onClick={onFechar} className="p-1.5 text-gray-600 hover:text-white transition-colors rounded-lg hover:bg-gray-800">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+      {isLoading ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="w-5 h-5 animate-spin text-violet-400" />
+        </div>
+      ) : comIngredientes.length === 0 ? (
+        <div className="text-center py-6 text-gray-600 text-xs space-y-1">
+          <p>Nenhuma receita com ingredientes estruturados.</p>
+          <p>Adicione ingredientes TACO nas receitas primeiro.</p>
+        </div>
+      ) : (
+        <div className="space-y-1.5 max-h-56 overflow-y-auto">
+          {comIngredientes.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => setReceitaSel(r)}
+              className="w-full text-left flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-white font-medium truncate">{r.nome}</p>
+                {r.categoria && <p className="text-xs text-gray-500 truncate">{r.categoria}</p>}
+              </div>
+              <span className="text-xs text-gray-600 ml-2 flex-shrink-0">
+                {r.ingredientesEstruturados?.length} item(s)
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Food Search Panel ─────────────────────────────────────────────
 function BuscaAlimento({
   onAdicionar,
@@ -383,6 +499,7 @@ export default function EditorPlanoAlimentar({
 
   const [expandida, setExpandida] = useState<string | null>(null);
   const [adding, setAdding] = useState<AddingState | null>(null);
+  const [addingReceita, setAddingReceita] = useState<AddingState | null>(null);
   const [opcaoAtiva, setOpcaoAtiva] = useState<Record<string, number>>({});
   const [modalRf, setModalRf] = useState(false);
   const [nomeRf, setNomeRf] = useState('');
@@ -523,6 +640,31 @@ export default function EditorPlanoAlimentar({
   const mutDelItem = useMutation({
     mutationFn: (itemId: string) => planosServico.refeicoes.deletarItem(itemId),
     onSuccess: invalidar,
+  });
+
+  const mutInsertReceita = useMutation({
+    mutationFn: async ({ refeicaoId, opcaoIndex, ingredientes }: {
+      refeicaoId: string;
+      opcaoIndex: number;
+      ingredientes: IngredienteReceita[];
+    }) => {
+      for (const ing of ingredientes) {
+        await planosServico.refeicoes.adicionarItem(planoId, refeicaoId, {
+          opcaoIndex,
+          nome: ing.nome,
+          quantidade: ing.quantidade,
+          caloriasP100g: ing.caloriasP100g,
+          proteinasP100g: ing.proteinasP100g,
+          carboidratosP100g: ing.carboidratosP100g,
+          gordurasP100g: ing.gordurasP100g,
+          fibrasP100g: ing.fibrasP100g ?? null,
+        });
+      }
+    },
+    onSuccess: () => {
+      invalidar();
+      setAddingReceita(null);
+    },
   });
 
   const salvarLiquido = async () => {
@@ -668,6 +810,7 @@ export default function EditorPlanoAlimentar({
         const aberta = expandida === rf.id;
         const rfMacros = calcMacros(grupos.get(0) ?? []);
         const isAdding = adding?.refeicaoId === rf.id && adding.opcaoIndex === ativa;
+        const isAddingReceita = addingReceita?.refeicaoId === rf.id && addingReceita.opcaoIndex === ativa;
 
         return (
           <div key={rf.id} className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
@@ -830,7 +973,7 @@ export default function EditorPlanoAlimentar({
                   </div>
                 )}
 
-                {/* Food search or add button */}
+                {/* Food search, recipe, or add buttons */}
                 {isAdding ? (
                   <BuscaAlimento
                     onAdicionar={(alimento, customNome, customKcal, qty) =>
@@ -846,14 +989,34 @@ export default function EditorPlanoAlimentar({
                     onFechar={() => setAdding(null)}
                     adicionando={mutAddItem.isPending}
                   />
+                ) : isAddingReceita ? (
+                  <BuscaReceita
+                    onInserir={(ingredientes) =>
+                      mutInsertReceita.mutate({
+                        refeicaoId: rf.id,
+                        opcaoIndex: addingReceita!.opcaoIndex,
+                        ingredientes,
+                      })
+                    }
+                    onFechar={() => setAddingReceita(null)}
+                    inserindo={mutInsertReceita.isPending}
+                  />
                 ) : (
                   <div className="flex items-center justify-between px-5 py-3 border-t border-gray-800">
-                    <button
-                      onClick={() => { setAdding({ refeicaoId: rf.id, opcaoIndex: ativa }); setExpandida(rf.id); }}
-                      className="flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" /> Adicionar alimento
-                    </button>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => { setAdding({ refeicaoId: rf.id, opcaoIndex: ativa }); setExpandida(rf.id); }}
+                        className="flex items-center gap-1.5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" /> Adicionar alimento
+                      </button>
+                      <button
+                        onClick={() => { setAddingReceita({ refeicaoId: rf.id, opcaoIndex: ativa }); setExpandida(rf.id); }}
+                        className="flex items-center gap-1.5 text-sm text-violet-400 hover:text-violet-300 transition-colors"
+                      >
+                        <BookOpen className="w-4 h-4" /> Inserir receita
+                      </button>
+                    </div>
                     {opcoes.length === 1 && (
                       <button
                         onClick={() => {

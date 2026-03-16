@@ -2,37 +2,8 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { alunosServico } from '../../servicos/api';
-import { Search, Plus, ChevronRight, Loader2, X, Lock, LockOpen, Trash2, AlertTriangle } from 'lucide-react';
+import { Search, Plus, ChevronRight, Loader2, X, Lock, Unlock, Trash2 } from 'lucide-react';
 import type { Aluno } from '../../tipos';
-
-// Máscara telefone: (11) 91234-5678 ou (11) 1234-5678
-function maskTelefone(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 11);
-  if (d.length === 0) return '';
-  if (d.length <= 2) return `(${d}`;
-  if (d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
-  if (d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
-  return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
-}
-
-// Máscara data DD/MM/AAAA → valor interno YYYY-MM-DD
-function maskData(v: string): string {
-  const d = v.replace(/\D/g, '').slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0,2)}/${d.slice(2)}`;
-  return `${d.slice(0,2)}/${d.slice(2,4)}/${d.slice(4)}`;
-}
-function displayToIso(display: string): string {
-  const parts = display.split('/');
-  if (parts.length === 3 && parts[2].length === 4) return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  return '';
-}
-function isoToDisplay(iso: string): string {
-  if (!iso) return '';
-  const parts = iso.split('-');
-  if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  return iso;
-}
 
 interface FormAluno {
   nome: string;
@@ -42,6 +13,25 @@ interface FormAluno {
   dataNascimento: string;
   objetivos: string;
 }
+
+const maskTelefone = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (!d.length) return '';
+  if (d.length <= 2) return `(${d}`;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+const maskData = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+};
+const displayToIso = (display: string) => {
+  const d = display.replace(/\D/g, '');
+  if (d.length !== 8) return '';
+  return `${d.slice(4)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
+};
 
 const formVazio: FormAluno = {
   nome: '',
@@ -59,9 +49,9 @@ export default function Alunos() {
   const [busca, setBusca] = useState('');
   const [mostrarModal, setMostrarModal] = useState(false);
   const [form, setForm] = useState<FormAluno>(formVazio);
-  const [dataDisplay, setDataDisplay] = useState('');
   const [erroForm, setErroForm] = useState('');
-  const [confirmarRemover, setConfirmarRemover] = useState<Aluno | null>(null);
+  const [dataDisplay, setDataDisplay] = useState('');
+  const [alunoParaDeletar, setAlunoParaDeletar] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: alunos = [], isLoading } = useQuery<Aluno[]>({
     queryKey: ['alunos'],
@@ -80,7 +70,7 @@ export default function Alunos() {
     },
   });
 
-  const mutToggleAtivo = useMutation({
+  const mutToggle = useMutation({
     mutationFn: ({ id, ativo }: { id: string; ativo: boolean }) => alunosServico.toggleAtivo(id, ativo),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['alunos'] }),
   });
@@ -89,7 +79,7 @@ export default function Alunos() {
     mutationFn: (id: string) => alunosServico.remover(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alunos'] });
-      setConfirmarRemover(null);
+      setAlunoParaDeletar(null);
     },
   });
 
@@ -152,12 +142,15 @@ export default function Alunos() {
       ) : (
         <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
           {alunosFiltrados.map((aluno, i) => (
-            <button
+            <div
               key={aluno.id}
-              onClick={() => navigate(`/admin/pacientes/${aluno.id}`)}
-              className={`w-full flex items-center justify-between px-5 py-4 hover:bg-gray-800/60 transition-colors text-left group ${i !== alunosFiltrados.length - 1 ? 'border-b border-gray-800/60' : ''}`}
+              className={`w-full flex items-center justify-between px-5 py-4 hover:bg-gray-800/60 transition-colors group ${i !== alunosFiltrados.length - 1 ? 'border-b border-gray-800/60' : ''}`}
             >
-              <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/pacientes/${aluno.id}`)}
+                className="flex items-center gap-3 flex-1 text-left min-w-0"
+              >
                 {aluno.fotoPerfil ? (
                   <img
                     src={`data:image/jpeg;base64,${aluno.fotoPerfil}`}
@@ -169,12 +162,12 @@ export default function Alunos() {
                     {aluno.nome.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <div>
-                  <p className="font-display tracking-wide text-white text-sm">{aluno.nome}</p>
-                  <p className="text-xs text-gray-500">{aluno.email}</p>
+                <div className="min-w-0">
+                  <p className="font-display tracking-wide text-white text-sm truncate">{aluno.nome}</p>
+                  <p className="text-xs text-gray-500 truncate">{aluno.email}</p>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
+              </button>
+              <div className="flex items-center gap-2 ml-3 shrink-0">
                 <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider ${
                   aluno.ativo
                     ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
@@ -185,65 +178,23 @@ export default function Alunos() {
                 <button
                   type="button"
                   title={aluno.ativo ? 'Bloquear acesso' : 'Liberar acesso'}
-                  onClick={(e) => { e.stopPropagation(); mutToggleAtivo.mutate({ id: aluno.id, ativo: !aluno.ativo }); }}
-                  className={`p-1.5 rounded-lg border transition-colors ${
-                    aluno.ativo
-                      ? 'border-amber-500/30 text-amber-400 hover:bg-amber-500/10'
-                      : 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                  }`}
+                  onClick={() => mutToggle.mutate({ id: aluno.id, ativo: !aluno.ativo })}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-amber-400 hover:bg-amber-400/10 transition-colors"
                 >
-                  {aluno.ativo ? <Lock className="w-3.5 h-3.5" /> : <LockOpen className="w-3.5 h-3.5" />}
+                  {aluno.ativo ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
                 </button>
                 <button
                   type="button"
                   title="Remover paciente"
-                  onClick={(e) => { e.stopPropagation(); setConfirmarRemover(aluno); }}
-                  className="p-1.5 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                  onClick={() => setAlunoParaDeletar({ id: aluno.id, nome: aluno.nome })}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
                 <ChevronRight className="w-4 h-4 text-gray-700 group-hover:text-gray-400 transition-colors" />
               </div>
-            </button>
+            </div>
           ))}
-        </div>
-      )}
-
-      {/* Modal Confirmar Remoção */}
-      {confirmarRemover && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-500/15 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
-              </div>
-              <div>
-                <p className="font-bold text-white text-sm">Remover paciente</p>
-                <p className="text-xs text-gray-500">Esta ação não pode ser desfeita</p>
-              </div>
-            </div>
-            <p className="text-sm text-gray-300">
-              Tem certeza que deseja remover <span className="text-white font-semibold">{confirmarRemover.nome}</span>? Todos os dados do paciente serão excluídos permanentemente.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirmarRemover(null)}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                disabled={mutRemover.isPending}
-                onClick={() => mutRemover.mutate(confirmarRemover.id)}
-                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-all"
-              >
-                {mutRemover.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
-                Remover
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
@@ -283,27 +234,21 @@ export default function Alunos() {
 
                 <div>
                   <label className={labelCls}>Telefone</label>
-                  <input
-                    value={form.telefone}
-                    onChange={(e) => setForm({ ...form, telefone: maskTelefone(e.target.value) })}
-                    placeholder="(11) 99999-0000"
-                    inputMode="numeric"
-                    className={inputCls}
-                  />
+                  <input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: maskTelefone(e.target.value) })} placeholder="(11) 99999-0000" className={inputCls} />
                 </div>
 
                 <div>
                   <label className={labelCls}>Data de Nascimento</label>
                   <input
+                    type="text"
+                    inputMode="numeric"
                     value={dataDisplay}
                     onChange={(e) => {
                       const masked = maskData(e.target.value);
                       setDataDisplay(masked);
-                      const iso = displayToIso(masked);
-                      setForm((f) => ({ ...f, dataNascimento: iso }));
+                      setForm({ ...form, dataNascimento: displayToIso(masked) });
                     }}
                     placeholder="DD/MM/AAAA"
-                    inputMode="numeric"
                     maxLength={10}
                     className={inputCls}
                   />
@@ -324,6 +269,31 @@ export default function Alunos() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmação de exclusão */}
+      {alunoParaDeletar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h2 className="font-bold text-white mb-2">Remover paciente?</h2>
+            <p className="text-sm text-gray-400 mb-6">
+              Tem certeza que deseja remover <span className="text-white font-semibold">{alunoParaDeletar.nome}</span>?{' '}
+              Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setAlunoParaDeletar(null)}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all">
+                Cancelar
+              </button>
+              <button type="button" onClick={() => mutRemover.mutate(alunoParaDeletar.id)}
+                disabled={mutRemover.isPending}
+                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-all">
+                {mutRemover.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Remover
+              </button>
+            </div>
           </div>
         </div>
       )}

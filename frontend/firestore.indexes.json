@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "planos_alimentares",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutricionistaId", "order": "ASCENDING" },
+        { "fieldPath": "alunoId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "fichas_treino",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutricionistaId", "order": "ASCENDING" },
+        { "fieldPath": "alunoId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "consultas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "nutricionistaId", "order": "ASCENDING" },
+        { "fieldPath": "alunoId", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

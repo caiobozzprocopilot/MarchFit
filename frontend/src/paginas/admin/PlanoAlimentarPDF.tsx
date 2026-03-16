@@ -400,7 +400,7 @@ export default function PlanoAlimentarPDF({ planoNome, alunoNome, liquidosMl, re
           {/* ── Liquid ── */}
           {liquidosMl && liquidosMl > 0 && (
             <View style={S.liquidRow}>
-              <Text style={S.liquidText}>💧 INGESTÃO DE LÍQUIDOS RECOMENDADA:</Text>
+              <Text style={S.liquidText}>AGUA RECOMENDADA:</Text>
               <Text style={S.liquidSub}>{liquidosMl >= 1000 ? `${(liquidosMl / 1000).toFixed(1)}L` : `${liquidosMl}ml`} ao longo do dia</Text>
             </View>
           )}
@@ -436,10 +436,7 @@ export default function PlanoAlimentarPDF({ planoNome, alunoNome, liquidosMl, re
                   <View style={S.colHeader}>
                     <Text style={[S.colLabel, { flex: 1 }]}>ALIMENTO</Text>
                     <Text style={[S.colLabel, { width: 40, textAlign: 'right' }]}>QTD</Text>
-                    <Text style={[S.colLabel, { width: 44, textAlign: 'right' }]}>KCAL</Text>
-                    <Text style={[S.colLabel, { width: 36, textAlign: 'right' }]}>PROT</Text>
-                    <Text style={[S.colLabel, { width: 36, textAlign: 'right' }]}>CARB</Text>
-                    <Text style={[S.colLabel, { width: 36, textAlign: 'right' }]}>GORD</Text>
+
                   </View>
                 )}
 
@@ -466,19 +463,12 @@ export default function PlanoAlimentarPDF({ planoNome, alunoNome, liquidosMl, re
                         </View>
                       </>
                     )}
-                    {itens.map((it) => {
-                      const f = it.quantidade / 100;
-                      return (
+                    {itens.map((it) => (
                         <View key={it.id} style={S.itemRow}>
                           <Text style={S.itemName}>{it.nome}</Text>
                           <Text style={S.itemQty}>{it.quantidade}g</Text>
-                          <Text style={S.itemKcal}>{r1(it.caloriasP100g * f)}</Text>
-                          <Text style={S.itemProt}>{r1(it.proteinasP100g * f)}g</Text>
-                          <Text style={S.itemCarb}>{r1(it.carboidratosP100g * f)}g</Text>
-                          <Text style={S.itemGord}>{r1(it.gordurasP100g * f)}g</Text>
                         </View>
-                      );
-                    })}
+                      ))}
                   </View>
                 ))}
 

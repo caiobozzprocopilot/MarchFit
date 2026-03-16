@@ -1,28 +1,37 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProvedorAutenticacao } from './contextos/autenticacao';
 import RotaProtegida from './componentes/RotaProtegida';
 import PaginaLogin from './paginas/Login';
 
-// Admin (Nutricionista)
-import LayoutAdmin from './componentes/layouts/LayoutAdmin';
-import Dashboard from './paginas/admin/Dashboard';
-import Alunos from './paginas/admin/Alunos';
-import PerfilAluno from './paginas/admin/PerfilAluno';
-import Alimentos from './paginas/admin/Alimentos';
-import Exercicios from './paginas/admin/Exercicios';
-import Receitas from './paginas/admin/Receitas';
-import Consultas from './paginas/admin/Consultas';
-import Formulas from './paginas/admin/Formulas';
-import ConfigAdmin from './paginas/admin/Config';
+// Admin (Nutricionista) — carregado sob demanda
+const LayoutAdmin      = lazy(() => import('./componentes/layouts/LayoutAdmin'));
+const Dashboard        = lazy(() => import('./paginas/admin/Dashboard'));
+const Alunos           = lazy(() => import('./paginas/admin/Alunos'));
+const PerfilAluno      = lazy(() => import('./paginas/admin/PerfilAluno'));
+const Alimentos        = lazy(() => import('./paginas/admin/Alimentos'));
+const Exercicios       = lazy(() => import('./paginas/admin/Exercicios'));
+const Receitas         = lazy(() => import('./paginas/admin/Receitas'));
+const Consultas        = lazy(() => import('./paginas/admin/Consultas'));
+const Formulas         = lazy(() => import('./paginas/admin/Formulas'));
+const ConfigAdmin      = lazy(() => import('./paginas/admin/Config'));
 
-// Aluno
-import LayoutAluno from './componentes/layouts/LayoutAluno';
-import DashboardAluno from './paginas/aluno/Dashboard';
-import MeuPlanoAlimentar from './paginas/aluno/MeuPlanoAlimentar';
-import MeusTreinos from './paginas/aluno/MeusTreinos';
-import MinhasReceitas from './paginas/aluno/MinhasReceitas';
-import MeuProgresso from './paginas/aluno/MeuProgresso';
-import MinhasConsultas from './paginas/aluno/MinhasConsultas';
+// Aluno — carregado sob demanda
+const LayoutAluno        = lazy(() => import('./componentes/layouts/LayoutAluno'));
+const DashboardAluno     = lazy(() => import('./paginas/aluno/Dashboard'));
+const MeuPlanoAlimentar  = lazy(() => import('./paginas/aluno/MeuPlanoAlimentar'));
+const MeusTreinos        = lazy(() => import('./paginas/aluno/MeusTreinos'));
+const MinhasReceitas     = lazy(() => import('./paginas/aluno/MinhasReceitas'));
+const MeuProgresso       = lazy(() => import('./paginas/aluno/MeuProgresso'));
+const MinhasConsultas    = lazy(() => import('./paginas/aluno/MinhasConsultas'));
+
+function PageSpinner() {
+  return (
+    <div className="flex items-center justify-center h-full min-h-[60vh]">
+      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
 
 export default function App() {
   return (
@@ -37,19 +46,21 @@ export default function App() {
           path="/admin"
           element={
             <RotaProtegida perfil="NUTRICIONISTA">
-              <LayoutAdmin />
+              <Suspense fallback={<PageSpinner />}>
+                <LayoutAdmin />
+              </Suspense>
             </RotaProtegida>
           }
         >
-          <Route index element={<Dashboard />} />
-          <Route path="pacientes" element={<Alunos />} />
-          <Route path="pacientes/:id" element={<PerfilAluno />} />
-          <Route path="alimentos" element={<Alimentos />} />
-          <Route path="exercicios" element={<Exercicios />} />
-          <Route path="receitas" element={<Receitas />} />
-          <Route path="consultas" element={<Consultas />} />
-          <Route path="formulas" element={<Formulas />} />
-          <Route path="config" element={<ConfigAdmin />} />
+          <Route index element={<Suspense fallback={<PageSpinner />}><Dashboard /></Suspense>} />
+          <Route path="pacientes" element={<Suspense fallback={<PageSpinner />}><Alunos /></Suspense>} />
+          <Route path="pacientes/:id" element={<Suspense fallback={<PageSpinner />}><PerfilAluno /></Suspense>} />
+          <Route path="alimentos" element={<Suspense fallback={<PageSpinner />}><Alimentos /></Suspense>} />
+          <Route path="exercicios" element={<Suspense fallback={<PageSpinner />}><Exercicios /></Suspense>} />
+          <Route path="receitas" element={<Suspense fallback={<PageSpinner />}><Receitas /></Suspense>} />
+          <Route path="consultas" element={<Suspense fallback={<PageSpinner />}><Consultas /></Suspense>} />
+          <Route path="formulas" element={<Suspense fallback={<PageSpinner />}><Formulas /></Suspense>} />
+          <Route path="config" element={<Suspense fallback={<PageSpinner />}><ConfigAdmin /></Suspense>} />
         </Route>
 
         {/* Rotas do Aluno */}
@@ -57,16 +68,18 @@ export default function App() {
           path="/paciente"
           element={
             <RotaProtegida perfil="PACIENTE">
-              <LayoutAluno />
+              <Suspense fallback={<PageSpinner />}>
+                <LayoutAluno />
+              </Suspense>
             </RotaProtegida>
           }
         >
-          <Route index element={<DashboardAluno />} />
-          <Route path="dieta" element={<MeuPlanoAlimentar />} />
-          <Route path="treinos" element={<MeusTreinos />} />
-          <Route path="receitas" element={<MinhasReceitas />} />
-          <Route path="progresso" element={<MeuProgresso />} />
-          <Route path="consultas" element={<MinhasConsultas />} />
+          <Route index element={<Suspense fallback={<PageSpinner />}><DashboardAluno /></Suspense>} />
+          <Route path="dieta" element={<Suspense fallback={<PageSpinner />}><MeuPlanoAlimentar /></Suspense>} />
+          <Route path="treinos" element={<Suspense fallback={<PageSpinner />}><MeusTreinos /></Suspense>} />
+          <Route path="receitas" element={<Suspense fallback={<PageSpinner />}><MinhasReceitas /></Suspense>} />
+          <Route path="progresso" element={<Suspense fallback={<PageSpinner />}><MeuProgresso /></Suspense>} />
+          <Route path="consultas" element={<Suspense fallback={<PageSpinner />}><MinhasConsultas /></Suspense>} />
         </Route>
 
         {/* Rota 404 */}

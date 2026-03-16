@@ -1,11 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { receitasServico, alunosServico } from '../../servicos/api';
+import { receitasServico, alunosServico, alimentosServico } from '../../servicos/api';
 import { Search, Plus, X, Loader2, Trash2, Youtube, Users, ChevronDown } from 'lucide-react';
-import type { Receita, Aluno } from '../../tipos';
+import type { Receita, Aluno, IngredienteReceita } from '../../tipos';
 
 const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
 const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
+const r1 = (v: number) => Math.round(v * 10) / 10;
 
 interface FormReceita {
   nome: string;
@@ -101,10 +102,35 @@ function CardReceita({ receita, onDeletar }: { receita: Receita; onDeletar: () =
           </div>
         </div>
 
-        {(receita.descricao || receita.ingredientes || receita.modoPreparo) && (
+        {receita.ingredientesEstruturados && receita.ingredientesEstruturados.length > 0 && (() => {
+          const m = receita.ingredientesEstruturados!.reduce(
+            (acc, ing) => ({ kcal: acc.kcal + ing.caloriasP100g * ing.quantidade / 100, prot: acc.prot + ing.proteinasP100g * ing.quantidade / 100, carb: acc.carb + ing.carboidratosP100g * ing.quantidade / 100, gord: acc.gord + ing.gordurasP100g * ing.quantidade / 100 }),
+            { kcal: 0, prot: 0, carb: 0, gord: 0 },
+          );
+          return (
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-xs font-bold text-yellow-400">{r1(m.kcal)} kcal</span>
+              <span className="text-xs text-blue-400">{r1(m.prot)}g P</span>
+              <span className="text-xs text-orange-400">{r1(m.carb)}g C</span>
+              <span className="text-xs text-red-400">{r1(m.gord)}g G</span>
+            </div>
+          );
+        })()}
+
+        {(receita.descricao || receita.ingredientes || receita.ingredientesEstruturados?.length || receita.modoPreparo) && (
           <div className="space-y-1.5">
             {receita.descricao && <Acordeon label="Descrição" content={receita.descricao} />}
-            {receita.ingredientes && <Acordeon label="Ingredientes" content={receita.ingredientes} />}
+            {receita.ingredientesEstruturados && receita.ingredientesEstruturados.length > 0 ? (
+              <Acordeon
+                label={`Ingredientes (${receita.ingredientesEstruturados.length} itens)`}
+                content={receita.ingredientesEstruturados.map((ing) => {
+                  const f = ing.quantidade / 100;
+                  return `${ing.nome} · ${ing.quantidade}g · ${r1(ing.caloriasP100g * f)} kcal · ${r1(ing.proteinasP100g * f)}g P`;
+                }).join('\n')}
+              />
+            ) : receita.ingredientes ? (
+              <Acordeon label="Ingredientes" content={receita.ingredientes} />
+            ) : null}
             {receita.modoPreparo && <Acordeon label="Modo de Preparo" content={receita.modoPreparo} />}
           </div>
         )}
@@ -140,6 +166,34 @@ export default function Receitas() {
 
   const [erroModal, setErroModal] = useState('');
 
+  // ── Ingredient builder state
+  const [ingredientesModal, setIngredientesModal] = useState<IngredienteReceita[]>([]);
+  const [ingBusca, setIngBusca] = useState('');
+  const [ingQtd, setIngQtd] = useState('100');
+  const [ingSel, setIngSel] = useState<any | null>(null);
+
+  const { data: alimentosTaco = [], isLoading: loadingAlimentos } = useQuery<any[]>({
+    queryKey: ['alimentos'],
+    queryFn: () => alimentosServico.listar().then((r: any) => r.data),
+    staleTime: 1000 * 60 * 5,
+    enabled: mostrarModal,
+  });
+
+  const alimentosFiltrados = useMemo(() => {
+    if (!ingBusca.trim() || ingSel) return [];
+    const q = ingBusca.toLowerCase();
+    return alimentosTaco
+      .filter((a) => a.nome?.toLowerCase().includes(q) && (a.caloriasP100g ?? 0) > 0)
+      .slice(0, 8);
+  }, [ingBusca, ingSel, alimentosTaco]);
+
+  const resetIngredientBuilder = () => {
+    setIngredientesModal([]);
+    setIngBusca('');
+    setIngSel(null);
+    setIngQtd('100');
+  };
+
   const mutCriar = useMutation({
     mutationFn: (d: any) => receitasServico.criar(d),
     onSuccess: () => {
@@ -147,6 +201,7 @@ export default function Receitas() {
       setMostrarModal(false);
       setForm(formVazio);
       setErroModal('');
+      resetIngredientBuilder();
     },
     onError: (e: any) => {
       console.error('[receitasServico.criar]', e);
@@ -181,7 +236,7 @@ export default function Receitas() {
       categoria: form.categoria || undefined,
       tempoPreparo: form.tempoPreparo ? parseInt(form.tempoPreparo) : undefined,
       porcoes: form.porcoes ? parseInt(form.porcoes) : undefined,
-      ingredientes: form.ingredientes || undefined,
+      ingredientesEstruturados: ingredientesModal.length > 0 ? ingredientesModal : undefined,
       modoPreparo: form.modoPreparo || undefined,
     });
   };
@@ -240,7 +295,7 @@ export default function Receitas() {
           <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
               <h2 className="font-bold text-white">Nova Receita</h2>
-              <button onClick={() => setMostrarModal(false)} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 transition-colors"><X className="w-4 h-4" /></button>
+              <button onClick={() => { setMostrarModal(false); resetIngredientBuilder(); }} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               {erroModal && (
@@ -273,9 +328,99 @@ export default function Receitas() {
                   rows={2} className={`${inputCls} resize-none`} />
               </div>
               <div>
-                <label className={labelCls}>Ingredientes</label>
-                <textarea value={form.ingredientes} onChange={(e) => setForm({ ...form, ingredientes: e.target.value })}
-                  rows={4} placeholder="Liste os ingredientes..." className={`${inputCls} resize-none`} />
+                <label className={labelCls}>Ingredientes (Tabela TACO)</label>
+                {/* Search row */}
+                <div className="flex gap-2 mb-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" />
+                    <input
+                      type="text"
+                      placeholder="Buscar alimento TACO..."
+                      value={ingBusca}
+                      onChange={(e) => { setIngBusca(e.target.value); setIngSel(null); }}
+                      className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <input
+                    type="number" min="1" placeholder="g"
+                    value={ingQtd}
+                    onChange={(e) => setIngQtd(e.target.value)}
+                    className="w-20 bg-gray-800 border border-gray-700 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    type="button"
+                    disabled={!ingSel || !Number(ingQtd)}
+                    onClick={() => {
+                      if (!ingSel) return;
+                      setIngredientesModal(p => [...p, {
+                        nome: ingSel.nome,
+                        quantidade: Number(ingQtd) || 100,
+                        caloriasP100g: ingSel.caloriasP100g ?? 0,
+                        proteinasP100g: ingSel.proteinasP100g ?? 0,
+                        carboidratosP100g: ingSel.carboidratosP100g ?? 0,
+                        gordurasP100g: ingSel.gordurasP100g ?? 0,
+                        fibrasP100g: ingSel.fibrasP100g ?? null,
+                      }]);
+                      setIngBusca(''); setIngSel(null); setIngQtd('100');
+                    }}
+                    className="flex items-center gap-1 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white px-3 py-2 rounded-xl text-sm font-semibold transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                {/* Dropdown */}
+                {!ingSel && ingBusca.trim() && (
+                  <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden mb-2 max-h-36 overflow-y-auto">
+                    {loadingAlimentos ? (
+                      <div className="flex justify-center py-3"><Loader2 className="w-4 h-4 animate-spin text-emerald-500" /></div>
+                    ) : alimentosFiltrados.length === 0 ? (
+                      <p className="text-center py-3 text-xs text-gray-600">Nenhum resultado</p>
+                    ) : alimentosFiltrados.map((a: any) => (
+                      <button
+                        key={a.id} type="button"
+                        onClick={() => { setIngSel(a); setIngBusca(a.nome); }}
+                        className="w-full flex justify-between items-center px-3 py-2 hover:bg-gray-700 text-left border-b border-gray-700/50 last:border-0 transition-colors"
+                      >
+                        <span className="text-sm text-white truncate">{a.nome}</span>
+                        <span className="text-xs text-yellow-400 ml-2 flex-shrink-0">{a.caloriasP100g} kcal/100g</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {/* Ingredient list */}
+                {ingredientesModal.length > 0 && (
+                  <div className="border border-gray-700 rounded-xl overflow-hidden divide-y divide-gray-800">
+                    {ingredientesModal.map((ing, i) => (
+                      <div key={i} className="flex items-center justify-between px-3 py-2 text-xs">
+                        <span className="text-white flex-1 min-w-0 truncate">{ing.nome}</span>
+                        <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                          <span className="text-gray-500">{ing.quantidade}g</span>
+                          <span className="text-yellow-400">{r1(ing.caloriasP100g * ing.quantidade / 100)} kcal</span>
+                          <button type="button" onClick={() => setIngredientesModal(p => p.filter((_, j) => j !== i))}
+                            className="text-gray-600 hover:text-red-400 transition-colors">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="px-3 py-2 bg-gray-800/50 text-xs flex gap-4">
+                      {(() => {
+                        const m = ingredientesModal.reduce((acc, ing) => ({
+                          kcal: acc.kcal + ing.caloriasP100g * ing.quantidade / 100,
+                          prot: acc.prot + ing.proteinasP100g * ing.quantidade / 100,
+                          carb: acc.carb + ing.carboidratosP100g * ing.quantidade / 100,
+                          gord: acc.gord + ing.gordurasP100g * ing.quantidade / 100,
+                        }), { kcal: 0, prot: 0, carb: 0, gord: 0 });
+                        return (<>
+                          <span className="text-yellow-400 font-bold">{r1(m.kcal)} kcal</span>
+                          <span className="text-blue-400">{r1(m.prot)}g P</span>
+                          <span className="text-orange-400">{r1(m.carb)}g C</span>
+                          <span className="text-red-400">{r1(m.gord)}g G</span>
+                        </>);
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className={labelCls}>Modo de Preparo</label>
@@ -283,7 +428,7 @@ export default function Receitas() {
                   rows={4} placeholder="Descreva o passo a passo..." className={`${inputCls} resize-none`} />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setMostrarModal(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all">Cancelar</button>
+                <button type="button" onClick={() => { setMostrarModal(false); resetIngredientBuilder(); }} className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all">Cancelar</button>
                 <button type="submit" disabled={mutCriar.isPending}
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-all">
                   {mutCriar.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Salvar

@@ -1,6 +1,9 @@
+import { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
-import LogoMarchFit from '../LogoMarchFit';
+import { anamneseServico } from '../../servicos/api';
+import AnamneseModal from '../AnamneseModal';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -11,6 +14,7 @@ import {
   LogOut,
   MessageCircle,
 } from 'lucide-react';
+import LogoMarchFit from '../LogoMarchFit';
 
 const itensMenu = [
   { para: '/paciente',            icone: LayoutDashboard,  rotulo: 'Início',        exato: true },
@@ -25,6 +29,19 @@ export default function LayoutAluno() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
 
+  const alunoId = usuario?.id;
+  const [skippedThisSession, setSkippedThisSession] = useState(false);
+
+  const { data: anamneseCheck, isLoading: loadingAnamneseCheck } = useQuery({
+    queryKey: ['anamnese', alunoId],
+    queryFn: () => anamneseServico.buscar(alunoId!).then((r) => r.data),
+    enabled: !!alunoId,
+    staleTime: 60 * 60 * 1000,
+  });
+
+  const showAnamnese =
+    !!alunoId && !loadingAnamneseCheck && !skippedThisSession && anamneseCheck === null;
+
   const handleLogout = () => { logout(); navigate('/login'); };
 
   const WHATSAPP_NUTRICIONISTA = '+5511999999999';
@@ -36,7 +53,7 @@ export default function LayoutAluno() {
       <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
         <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
           <div className="flex items-center gap-2.5">
-            <LogoMarchFit className="w-8 h-8" />
+            <LogoMarchFit className="w-8 h-8 rounded-xl" />
             <div>
               <span className="text-xs text-gray-500">Bem-vindo,</span>
               <p className="font-display tracking-wide text-white text-sm leading-tight">{usuario?.nome?.split(' ')[0]}</p>
@@ -100,6 +117,14 @@ export default function LayoutAluno() {
           ))}
         </div>
       </nav>
+
+      {showAnamnese && (
+        <AnamneseModal
+          alunoId={alunoId!}
+          onComplete={() => {}}
+          onSkip={() => setSkippedThisSession(true)}
+        />
+      )}
     </div>
   );
 }

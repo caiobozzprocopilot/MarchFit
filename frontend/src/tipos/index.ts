@@ -142,6 +142,16 @@ export interface FichaTreino {
   _count?: { exercicios: number };
 }
 
+export interface IngredienteReceita {
+  nome: string;
+  quantidade: number;
+  caloriasP100g: number;
+  proteinasP100g: number;
+  carboidratosP100g: number;
+  gordurasP100g: number;
+  fibrasP100g?: number | null;
+}
+
 export interface Receita {
   id: string;
   nome: string;
@@ -150,6 +160,7 @@ export interface Receita {
   youtubeVideoId: string;
   categoria?: string;
   ingredientes?: string;
+  ingredientesEstruturados?: IngredienteReceita[];
   modoPreparo?: string;
   tempoPreparo?: number;
   porcoes?: number;
@@ -220,6 +231,32 @@ export interface DashboardAdmin {
   };
   proximasConsultas: Consulta[];
   ultimosProgressos: RegistroProgresso[];
+}
+
+export interface Anamnese {
+  id: string;
+  alunoId: string;
+  dataNascimento?: string;
+  sexo?: string;
+  pesoAtual?: number;
+  altura?: number;
+  objetivo?: string;
+  praticaExercicio?: string;
+  tipoExercicio?: string;
+  frequenciaExercicio?: string;
+  nivelAtividade?: string;
+  doencas?: string;
+  medicamentos?: string;
+  alergias?: string;
+  restricoes?: string;
+  consumoAgua?: string;
+  intestino?: string;
+  qualidadeSono?: number;
+  nivelEstresse?: number;
+  preferenciasAlimentares?: string;
+  observacoes?: string;
+  notasNutricionista?: string;
+  completadaEm?: string;
 }
 
 // Auth

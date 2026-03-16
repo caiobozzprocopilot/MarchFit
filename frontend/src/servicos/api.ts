@@ -76,10 +76,16 @@ export const autenticacaoServico = {
     try {
       const cred = await signInWithEmailAndPassword(auth, email, senha);
       const token = await cred.user.getIdToken();
-      const snap = await getDocs(query(collection(db, 'alunos'), where('email', '==', email)));
+      // Use the Firebase-normalized email for Firestore lookup
+      const authEmail = cred.user.email || email.toLowerCase().trim();
+      let snap = await getDocs(query(collection(db, 'alunos'), where('email', '==', authEmail)));
+      // Fallback: try the raw email in case existing data used a different case
+      if (snap.empty && authEmail !== email) {
+        snap = await getDocs(query(collection(db, 'alunos'), where('email', '==', email)));
+      }
       if (snap.empty) throw { response: { data: { mensagem: 'Aluno não encontrado no sistema.' } } };
       const aluno = snap.docs[0].data() as any;
-      if (aluno.ativo === false) throw { response: { data: { mensagem: 'Seu acesso foi bloqueado. Entre em contato com seu nutricionista.' } } };
+      if (aluno.ativo === false) throw { response: { data: { mensagem: 'Seu acesso está bloqueado. Fale com seu nutricionista.' } } };
       return ok({ token, usuario: { id: snap.docs[0].id, nome: aluno.nome, email: aluno.email, perfil: 'PACIENTE' } });
     } catch (e: any) {
       if (e?.response) throw e;
@@ -203,7 +209,7 @@ export const alunosServico = {
     try {
       const c = await createUserWithEmailAndPassword(authSecundario, dados.email, dados.senha || 'nutri@123');
       id = c.user.uid;
-      await fbSignOut(authSecundario); // desconecta da instância secundária imediatamente
+      fbSignOut(authSecundario).catch(() => {});
     } catch (e: any) {
       if (e?.code === 'auth/email-already-in-use') {
         // user already has a Firebase Auth account — find or use existing
@@ -215,20 +221,24 @@ export const alunosServico = {
       }
     }
     const { senha, ...rest } = dados;
-    await setDoc(doc(db, 'alunos', id), { ...rest, nutricionistaId: nutriId, ativo: true, criadoEm: ts() });
-    return ok({ id, ...rest, nutricionistaId: nutriId });
+    const normalizedEmail = (rest.email as string || '').toLowerCase().trim();
+    await setDoc(doc(db, 'alunos', id), { ...rest, email: normalizedEmail, nutricionistaId: nutriId, ativo: true, criadoEm: ts() });
+    return ok({ id, ...rest, email: normalizedEmail, nutricionistaId: nutriId });
   },
   atualizar: async (id: string, dados: any) => {
     const { senha, ...rest } = dados;
     await updateDoc(doc(db, 'alunos', id), rest);
     return ok({ id, ...rest });
   },
+  deletar: async (id: string) => { await updateDoc(doc(db, 'alunos', id), { ativo: false }); return ok({ mensagem: 'Aluno desativado.' }); },
   toggleAtivo: async (id: string, ativo: boolean) => {
     await updateDoc(doc(db, 'alunos', id), { ativo });
     return ok({ mensagem: ativo ? 'Acesso liberado.' : 'Acesso bloqueado.' });
   },
-  remover: async (id: string) => { await deleteDoc(doc(db, 'alunos', id)); return ok({ mensagem: 'Paciente removido.' }); },
-  deletar: async (id: string) => { await updateDoc(doc(db, 'alunos', id), { ativo: false }); return ok({ mensagem: 'Aluno desativado.' }); },
+  remover: async (id: string) => {
+    await deleteDoc(doc(db, 'alunos', id));
+    return ok({ mensagem: 'Aluno removido.' });
+  },
   atualizarFoto: async (id: string, formData: FormData) => {
     const file = formData.get('foto') as File;
     const base64 = await file2base64(file);
@@ -284,8 +294,13 @@ export const planosServico = {
       const nutriId = nutriSnap.docs[0].id;
       q = params?.alunoId ? query(collection(db, 'planos_alimentares'), where('nutricionistaId', '==', nutriId), where('alunoId', '==', params.alunoId)) : query(collection(db, 'planos_alimentares'), where('nutricionistaId', '==', nutriId));
     } else {
-      const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
-      q = query(collection(db, 'planos_alimentares'), where('alunoId', '==', alunoSnap.docs[0]?.id));
+      let alunoId = params?.alunoId as string | undefined;
+      if (!alunoId) {
+        const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
+        alunoId = alunoSnap.docs[0]?.id;
+      }
+      if (!alunoId) throw new Error('Aluno não encontrado.');
+      q = query(collection(db, 'planos_alimentares'), where('alunoId', '==', alunoId));
     }
     return ok(snap2arr(await getDocs(q)));
   },
@@ -336,8 +351,13 @@ export const fichasServico = {
       const nutriId = nutriSnap.docs[0].id;
       q = params?.alunoId ? query(collection(db, 'fichas_treino'), where('nutricionistaId', '==', nutriId), where('alunoId', '==', params.alunoId)) : query(collection(db, 'fichas_treino'), where('nutricionistaId', '==', nutriId));
     } else {
-      const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
-      q = query(collection(db, 'fichas_treino'), where('alunoId', '==', alunoSnap.docs[0]?.id));
+      let alunoId = params?.alunoId as string | undefined;
+      if (!alunoId) {
+        const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
+        alunoId = alunoSnap.docs[0]?.id;
+      }
+      if (!alunoId) throw new Error('Aluno não encontrado.');
+      q = query(collection(db, 'fichas_treino'), where('alunoId', '==', alunoId));
     }
     return ok(snap2arr(await getDocs(q)));
   },
@@ -437,8 +457,13 @@ export const consultasServico = {
     if (!nutriSnap.empty) {
       q = query(collection(db, 'consultas'), where('nutricionistaId', '==', nutriSnap.docs[0].id));
     } else {
-      const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
-      q = query(collection(db, 'consultas'), where('alunoId', '==', alunoSnap.docs[0]?.id));
+      let alunoId = params?.alunoId as string | undefined;
+      if (!alunoId) {
+        const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
+        alunoId = alunoSnap.docs[0]?.id;
+      }
+      if (!alunoId) throw new Error('Aluno não encontrado.');
+      q = query(collection(db, 'consultas'), where('alunoId', '==', alunoId));
     }
     let lista = snap2arr(await getDocs(q));
     if (params?.status) lista = lista.filter((c: any) => c.status === params.status);
@@ -459,6 +484,23 @@ export const formulasServico = {
   deletar: async (id: string) => { await deleteDoc(doc(db, 'formulas_calculo', id)); return ok({ mensagem: 'Removido.' }); },
 };
 
+// ─── Anamnese ────────────────────────────────────────────────────
+export const anamneseServico = {
+  buscar: async (alunoId: string) => {
+    const d = await getDoc(doc(db, 'anamneses', alunoId));
+    return ok(d.exists() ? { id: d.id, ...d.data() } : null);
+  },
+  salvar: async (alunoId: string, dados: any) => {
+    const payload = { ...dados, alunoId, completadaEm: ts() };
+    await setDoc(doc(db, 'anamneses', alunoId), payload);
+    return ok({ id: alunoId, ...payload });
+  },
+  atualizarNotas: async (alunoId: string, notasNutricionista: string) => {
+    await updateDoc(doc(db, 'anamneses', alunoId), { notasNutricionista });
+    return ok({ mensagem: 'Notas atualizadas.' });
+  },
+};
+
 // ─── Tabela TACO ─────────────────────────────────────────────────
 import { tacoAlimentos, type TacoAlimento } from '../dados/taco';
 
@@ -476,4 +518,4 @@ export const tacoServico = {
 };
 
 export { fbSignOut as signOut };
-export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico };
+export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico, anamneseServico };

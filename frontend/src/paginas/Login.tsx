@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contextos/autenticacao';
 import { autenticacaoServico } from '../servicos/api';
-import { Lock, Mail, Loader2, Zap } from 'lucide-react';
+import { Lock, Mail, Loader2, Leaf, Zap, Eye, EyeOff } from 'lucide-react';
 import LogoMarchFit from '../componentes/LogoMarchFit';
 
 type TipoLogin = 'nutricionista' | 'aluno';
@@ -29,6 +29,7 @@ export default function PaginaLogin() {
   const [resetEmail, setResetEmail] = useState('');
   const [resetEnviado, setResetEnviado] = useState(false);
   const [resetErro, setResetErro] = useState('');
+  const [mostrarSenha, setMostrarSenha] = useState(false);
   const { login, estaAutenticado, usuario } = useAuth();
   const navigate = useNavigate();
   const jaNavegouRef = useRef(false);
@@ -112,7 +113,7 @@ export default function PaginaLogin() {
       <div className="flex-1 flex items-center justify-center bg-gray-950 p-6">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-3 mb-10 lg:hidden">
-            <LogoMarchFit className="w-10 h-10" />
+            <LogoMarchFit className="w-10 h-10 rounded-2xl" />
             <span className="text-xl font-black text-white">MarchFit</span>
           </div>
 
@@ -126,7 +127,7 @@ export default function PaginaLogin() {
             {(['nutricionista', 'aluno'] as TipoLogin[]).map((t) => (
               <button key={t} type="button" onClick={() => setTipo(t)}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-display uppercase tracking-wider transition-all duration-200 ${tipo === t ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-                {t === 'nutricionista' ? <LogoMarchFit className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
+                {t === 'nutricionista' ? <Leaf className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
                 {t === 'nutricionista' ? 'Nutricionista' : 'Paciente'}
               </button>
             ))}
@@ -144,7 +145,11 @@ export default function PaginaLogin() {
               <label className="block text-xs font-display text-gray-400 uppercase tracking-wider mb-2">Senha</label>
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" className={inputCls} />
+                <input type={mostrarSenha ? 'text' : 'password'} value={senha} onChange={(e) => setSenha(e.target.value)} required placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;" className={`${inputCls} pr-11`} />
+                <button type="button" onClick={() => setMostrarSenha((v) => !v)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors">
+                  {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
               <button
                 type="button"

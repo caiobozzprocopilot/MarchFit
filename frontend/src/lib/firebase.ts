@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
@@ -17,7 +17,6 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();
 
-// Instância secundária usada apenas para criar contas de alunos
-// sem derrubar a sessão do nutricionista logado
-const appSecundario = initializeApp(firebaseConfig, 'secundario');
+// App secundário para criar usuários sem derrubar a sessão do nutricionista
+const appSecundario = getApps().find((a) => a.name === 'secundario') ?? initializeApp(firebaseConfig, 'secundario');
 export const authSecundario = getAuth(appSecundario);

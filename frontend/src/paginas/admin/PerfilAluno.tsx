@@ -3,11 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   alunosServico,
+  autenticacaoServico,
   planosServico,
   fichasServico,
   exerciciosServico,
   progressoServico,
   consultasServico,
+  anamneseServico,
 } from '../../servicos/api';
 import {
   ArrowLeft,
@@ -26,6 +28,7 @@ import {
   Target,
   Clock,
   ChevronRight,
+  ClipboardList,
 } from 'lucide-react';
 import EditorPlanoAlimentar from './EditorPlanoAlimentar';
 import {
@@ -39,16 +42,17 @@ import {
 } from 'recharts';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import type { Aluno, PlanoAlimentar, FichaTreino, Exercicio, RegistroProgresso, Consulta } from '../../tipos';
+import type { Aluno, PlanoAlimentar, FichaTreino, Exercicio, RegistroProgresso, Consulta, Anamnese } from '../../tipos';
 
-type Aba = 'dados' | 'plano' | 'treino' | 'progresso' | 'consultas';
+type Aba = 'dados' | 'plano' | 'treino' | 'progresso' | 'consultas' | 'anamnese';
 
 const abas: { key: Aba; label: string; icone: React.FC<{ className?: string }> }[] = [
   { key: 'dados',     label: 'Dados',           icone: User       },
   { key: 'plano',     label: 'Plano Alimentar',  icone: Utensils   },
   { key: 'treino',    label: 'Treino',           icone: Dumbbell   },
   { key: 'progresso', label: 'Progresso',        icone: TrendingUp },
-  { key: 'consultas', label: 'Consultas',         icone: Calendar   },
+  { key: 'consultas', label: 'Consultas',          icone: Calendar      },
+  { key: 'anamnese',  label: 'Anamnese',           icone: ClipboardList },
 ];
 
 // ── Shared helpers ────────────────────────────────────────────────
@@ -77,6 +81,12 @@ const addBtn = 'flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-tea
 /* ------------------------------------------------------------------ */
 
 function AbaDados({ aluno }: { aluno: Aluno }) {
+  const [enviado, setEnviado] = useState(false);
+  const mutEnviarAcesso = useMutation({
+    mutationFn: () => autenticacaoServico.esqueceuSenha(aluno.email),
+    onSuccess: () => setEnviado(true),
+  });
+
   const idade = aluno.dataNascimento
     ? Math.floor((Date.now() - new Date(aluno.dataNascimento).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null;
@@ -107,6 +117,24 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
           <p className="font-display uppercase tracking-wider text-xs text-gray-500">Status</p>
           <p className={`text-sm font-bold mt-0.5 ${aluno.ativo ? 'text-emerald-400' : 'text-gray-500'}`}>{aluno.ativo ? 'Ativo' : 'Inativo'}</p>
         </div>
+      </div>
+      <div className="rounded-2xl border border-gray-700 bg-gray-800/60 px-5 py-4 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex-shrink-0">
+            <Mail className="w-4 h-4 text-blue-400" />
+          </div>
+          <div>
+            <p className="font-display uppercase tracking-wider text-xs text-gray-500">Acesso do paciente</p>
+            <p className="text-xs text-gray-400 mt-0.5">Envia email de redefinição de senha</p>
+          </div>
+        </div>
+        <button
+          onClick={() => mutEnviarAcesso.mutate()}
+          disabled={mutEnviarAcesso.isPending || enviado}
+          className="px-3 py-1.5 rounded-lg text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 disabled:opacity-50 transition-all whitespace-nowrap"
+        >
+          {enviado ? 'Email enviado ✓' : mutEnviarAcesso.isPending ? 'Enviando…' : 'Enviar acesso'}
+        </button>
       </div>
     </div>
   );
@@ -661,6 +689,140 @@ function AbaConsultas({ alunoId }: { alunoId: string }) {
 
 /* ------------------------------------------------------------------ */
 
+function AbaAnamnese({ alunoId }: { alunoId: string }) {
+  const queryClient = useQueryClient();
+  const [editandoNotas, setEditandoNotas] = useState(false);
+  const [notas, setNotas] = useState('');
+
+  const { data: anamnese, isLoading } = useQuery<Anamnese | null>({
+    queryKey: ['anamnese', alunoId],
+    queryFn: () => anamneseServico.buscar(alunoId).then((r) => r.data),
+  });
+
+  const mutNotas = useMutation({
+    mutationFn: () => anamneseServico.atualizarNotas(alunoId, notas),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['anamnese', alunoId] });
+      setEditandoNotas(false);
+    },
+  });
+
+  if (isLoading) return <div className="flex justify-center pt-10"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>;
+
+  if (!anamnese) {
+    return (
+      <div className="text-center py-16 text-gray-600">
+        <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
+        <p className="text-sm font-semibold text-gray-500">Anamnese não preenchida</p>
+        <p className="text-xs text-gray-700 mt-1">O paciente verá este formulário ao acessar o app pela primeira vez</p>
+      </div>
+    );
+  }
+
+  const F = ({ label, value }: { label: string; value?: string | number | null }) =>
+    value != null && value !== '' ? (
+      <div className="px-5 py-3 flex items-start justify-between gap-4 border-b border-gray-800 last:border-0">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex-shrink-0 pt-0.5 w-36">{label}</p>
+        <p className="text-sm text-white text-right">{String(value)}</p>
+      </div>
+    ) : null;
+
+  const Sec = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <div>
+      <h4 className="font-display uppercase tracking-wider text-xs text-gray-500 mb-2 px-1">{title}</h4>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">{children}</div>
+    </div>
+  );
+
+  const mapSexo: Record<string, string> = { M: 'Masculino', F: 'Feminino', O: 'Outro' };
+  const mapObj: Record<string, string> = { emagrecer: 'Emagrecer', hipertrofia: 'Hipertrofia', condicionamento: 'Condicionamento', saude: 'Saúde', manter: 'Manter peso' };
+  const mapNivel: Record<string, string> = { sedentario: 'Sedentário', leve: 'Levemente ativo', moderado: 'Moderadamente ativo', ativo: 'Muito ativo' };
+  const mapAgua: Record<string, string> = { menos2l: 'Menos de 2L/dia', '2-3l': '2–3L/dia', mais3l: 'Mais de 3L/dia' };
+  const mapIntest: Record<string, string> = { regular: 'Regular', irregular: 'Irregular', constipado: 'Constipado', diarreia: 'Diarreia frequente' };
+  const stars = (n?: number) => (n ? '★'.repeat(n) + '☆'.repeat(5 - n) : null);
+
+  return (
+    <div className="space-y-4">
+      {anamnese.completadaEm && (
+        <p className="text-xs text-gray-600 text-right">
+          Preenchida em {format(parseISO(anamnese.completadaEm), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+        </p>
+      )}
+
+      <Sec title="Dados físicos">
+        <F label="Sexo" value={mapSexo[anamnese.sexo || ''] || anamnese.sexo} />
+        <F label="Nascimento" value={anamnese.dataNascimento ? format(parseISO(anamnese.dataNascimento), 'dd/MM/yyyy') : null} />
+        <F label="Peso atual" value={anamnese.pesoAtual ? `${anamnese.pesoAtual} kg` : null} />
+        <F label="Altura" value={anamnese.altura ? `${anamnese.altura} cm` : null} />
+      </Sec>
+
+      <Sec title="Atividade física">
+        <F label="Objetivo" value={mapObj[anamnese.objetivo || ''] || anamnese.objetivo} />
+        <F label="Nível de atividade" value={mapNivel[anamnese.nivelAtividade || ''] || anamnese.nivelAtividade} />
+        <F label="Pratica exercício" value={anamnese.praticaExercicio === 'sim' ? 'Sim' : anamnese.praticaExercicio === 'nao' ? 'Não' : anamnese.praticaExercicio} />
+        <F label="Tipo" value={anamnese.tipoExercicio} />
+        <F label="Frequência" value={anamnese.frequenciaExercicio} />
+      </Sec>
+
+      <Sec title="Histórico de saúde">
+        <F label="Doenças/condições" value={anamnese.doencas} />
+        <F label="Medicamentos" value={anamnese.medicamentos} />
+        <F label="Alergias" value={anamnese.alergias} />
+        <F label="Restrições" value={anamnese.restricoes} />
+      </Sec>
+
+      <Sec title="Hábitos de vida">
+        <F label="Consumo de água" value={mapAgua[anamnese.consumoAgua || ''] || anamnese.consumoAgua} />
+        <F label="Intestino" value={mapIntest[anamnese.intestino || ''] || anamnese.intestino} />
+        <F label="Qualidade do sono" value={stars(anamnese.qualidadeSono)} />
+        <F label="Nível de estresse" value={stars(anamnese.nivelEstresse)} />
+        <F label="Preferências" value={anamnese.preferenciasAlimentares} />
+        <F label="Observações" value={anamnese.observacoes} />
+      </Sec>
+
+      <div>
+        <h4 className="font-display uppercase tracking-wider text-xs text-gray-500 mb-2 px-1">Notas do nutricionista</h4>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
+          {editandoNotas ? (
+            <div className="space-y-3">
+              <textarea
+                value={notas}
+                onChange={(e) => setNotas(e.target.value)}
+                rows={4}
+                className={`${inputCls} resize-none`}
+                placeholder="Observações clínicas, impressões, próximos passos..."
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <button onClick={() => setEditandoNotas(false)} className={btnSecondary}>Cancelar</button>
+                <button onClick={() => mutNotas.mutate()} disabled={mutNotas.isPending} className={btnPrimary}>
+                  {mutNotas.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Salvar
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {anamnese.notasNutricionista ? (
+                <p className="text-sm text-gray-300 whitespace-pre-wrap">{anamnese.notasNutricionista}</p>
+              ) : (
+                <p className="text-sm text-gray-600 italic">Nenhuma nota adicionada.</p>
+              )}
+              <button
+                onClick={() => { setNotas(anamnese.notasNutricionista || ''); setEditandoNotas(true); }}
+                className="mt-3 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
+              >
+                {anamnese.notasNutricionista ? '✎ Editar notas' : '+ Adicionar nota'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
 export default function PerfilAluno() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -750,6 +912,7 @@ export default function PerfilAluno() {
         {abaAtiva === 'treino'    && <AbaFichaTreino alunoId={id!} />}
         {abaAtiva === 'progresso' && <AbaProgresso alunoId={id!} />}
         {abaAtiva === 'consultas' && <AbaConsultas alunoId={id!} />}
+        {abaAtiva === 'anamnese'  && <AbaAnamnese alunoId={id!} />}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 ﻿import { useState, useMemo } from 'react';
-import { Search, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
-import { tacoAlimentos, categoriasTaco } from '../../dados/taco';
+import { useQuery } from '@tanstack/react-query';
+import { Search, BookOpen, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { alimentosServico } from '../../servicos/api';
 
 const POR_PAGINA = 30;
 
@@ -39,26 +40,42 @@ function Paginacao({ total, pagina, setPagina }: { total: number; pagina: number
 
 export default function Alimentos() {
   const [busca, setBusca] = useState('');
-  const [catTaco, setCatTaco] = useState('');
+  const [catFiltro, setCatFiltro] = useState('');
   const [pagina, setPagina] = useState(1);
 
-  const tacoFiltrado = useMemo(() => {
-    let lista = tacoAlimentos;
-    if (catTaco) lista = lista.filter((a) => a.categoria === catTaco);
+  const { data, isLoading } = useQuery({
+    queryKey: ['alimentos'],
+    queryFn: async () => {
+      const res = await alimentosServico.listar();
+      return (res.data as any[]).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const todos = data ?? [];
+
+  const categorias = useMemo(
+    () => [...new Set(todos.map((a: any) => a.categoria).filter(Boolean))].sort((a: any, b: any) => a.localeCompare(b, 'pt-BR')),
+    [todos],
+  );
+
+  const filtrado = useMemo(() => {
+    let lista = todos;
+    if (catFiltro) lista = lista.filter((a: any) => a.categoria === catFiltro);
     if (busca.trim()) {
       const t = busca.toLowerCase();
-      lista = lista.filter((a) => a.nome.toLowerCase().includes(t) || a.categoria.toLowerCase().includes(t));
+      lista = lista.filter((a: any) => a.nome?.toLowerCase().includes(t) || a.categoria?.toLowerCase().includes(t));
     }
     return lista;
-  }, [busca, catTaco]);
+  }, [todos, busca, catFiltro]);
 
-  const tacoNaPagina = useMemo(
-    () => tacoFiltrado.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA),
-    [tacoFiltrado, pagina],
+  const naPagina = useMemo(
+    () => filtrado.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA),
+    [filtrado, pagina],
   );
 
   const onBusca = (v: string) => { setBusca(v); setPagina(1); };
-  const onCategoria = (v: string) => { setCatTaco(v); setPagina(1); };
+  const onCategoria = (v: string) => { setCatFiltro(v); setPagina(1); };
 
   return (
     <div className="space-y-5">
@@ -68,10 +85,10 @@ export default function Alimentos() {
             <BookOpen className="w-6 h-6 text-emerald-400" /> Tabela TACO
           </h1>
           <p className="text-gray-500 text-sm mt-0.5">
-            Tabela Brasileira de Composicao de Alimentos - NEPA/UNICAMP - {tacoAlimentos.length} alimentos
+            Tabela Brasileira de Composição de Alimentos - NEPA/UNICAMP
+            {!isLoading && ` · ${todos.length} alimentos`}
           </p>
         </div>
-
       </div>
 
       <div className="flex gap-3">
@@ -86,12 +103,12 @@ export default function Alimentos() {
           />
         </div>
         <select
-          value={catTaco}
+          value={catFiltro}
           onChange={(e) => onCategoria(e.target.value)}
           className="bg-gray-900 border border-gray-800 rounded-xl py-2.5 px-3 text-sm text-gray-300 focus:outline-none focus:border-emerald-500 transition-all"
         >
           <option value="">Todas as categorias</option>
-          {categoriasTaco.map((c) => <option key={c} value={c}>{c}</option>)}
+          {categorias.map((c: any) => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
@@ -106,7 +123,14 @@ export default function Alimentos() {
               </tr>
             </thead>
             <tbody>
-              {tacoNaPagina.length === 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-16 text-gray-600">
+                    <Loader2 className="w-6 h-6 mx-auto mb-2 animate-spin opacity-40" />
+                    Carregando alimentos...
+                  </td>
+                </tr>
+              ) : naPagina.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-16 text-gray-600">
                     <Search className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -114,10 +138,10 @@ export default function Alimentos() {
                   </td>
                 </tr>
               ) : (
-                tacoNaPagina.map((a, i) => (
+                naPagina.map((a: any, i: number) => (
                   <tr
-                    key={a.tacoId}
-                    className={`transition-colors ${i !== tacoNaPagina.length - 1 ? 'border-b border-gray-800/60' : ''}`}
+                    key={a.id}
+                    className={`transition-colors ${i !== naPagina.length - 1 ? 'border-b border-gray-800/60' : ''}`}
                   >
                     <td className="px-4 py-3 font-semibold text-white max-w-[220px] truncate">{a.nome}</td>
                     <td className="px-4 py-3 text-gray-500 text-xs max-w-[160px] truncate">{a.categoria}</td>
@@ -125,7 +149,9 @@ export default function Alimentos() {
                     <td className="px-4 py-3 text-blue-400 tabular-nums">{a.proteinasP100g}g</td>
                     <td className="px-4 py-3 text-orange-400 tabular-nums">{a.carboidratosP100g}g</td>
                     <td className="px-4 py-3 text-red-400 tabular-nums">{a.gordurasP100g}g</td>
-                    <td className="px-4 py-3 text-emerald-400 tabular-nums">{a.fibrasP100g ?? '-'}{a.fibrasP100g != null ? 'g' : ''}</td>
+                    <td className="px-4 py-3 text-emerald-400 tabular-nums">
+                      {a.fibrasP100g != null && a.fibrasP100g !== '' ? `${a.fibrasP100g}g` : '-'}
+                    </td>
                   </tr>
                 ))
               )}
@@ -133,10 +159,9 @@ export default function Alimentos() {
           </table>
         </div>
         <div className="border-t border-gray-800">
-          <Paginacao total={tacoFiltrado.length} pagina={pagina} setPagina={setPagina} />
+          <Paginacao total={filtrado.length} pagina={pagina} setPagina={setPagina} />
         </div>
       </div>
-
     </div>
   );
 }

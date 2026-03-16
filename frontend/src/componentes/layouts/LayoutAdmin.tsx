@@ -12,8 +12,8 @@ import {
   LogOut,
   Menu,
 } from 'lucide-react';
-import { useState } from 'react';
 import LogoMarchFit from '../LogoMarchFit';
+import { useState } from 'react';
 
 const itensMenu = [
   { para: '/admin',           icone: LayoutDashboard, rotulo: 'Dashboard',    exato: true },
@@ -48,12 +48,8 @@ export default function LayoutAdmin() {
         ${menuAberto ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
       `}>
         {/* Logo */}
-        <div className="flex items-center gap-3 px-5 py-5">
-          <LogoMarchFit className="w-9 h-9" />
-          <div>
-            <p className="font-black text-white text-sm">MarchFit</p>
-            <p className="text-xs text-gray-500">Painel Admin</p>
-          </div>
+        <div className="flex flex-col items-center px-5 pt-6 pb-4">
+          <LogoMarchFit className="w-40 h-auto" />
         </div>
 
         {/* Perfil */}

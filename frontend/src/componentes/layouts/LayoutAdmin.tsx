@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import LogoMarchFit from '../LogoMarchFit';
 import { useState } from 'react';
+import ChatAdmin from '../ChatAdmin';
 
 const itensMenu = [
   { para: '/admin',           icone: LayoutDashboard, rotulo: 'Dashboard',    exato: true },
@@ -115,6 +116,9 @@ export default function LayoutAdmin() {
           <Outlet />
         </main>
       </div>
+
+      {/* Chat flutuante com pacientes */}
+      <ChatAdmin />
     </div>
   );
 }

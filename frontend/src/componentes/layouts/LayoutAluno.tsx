@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
 import { anamneseServico } from '../../servicos/api';
 import AnamneseModal from '../AnamneseModal';
+import ChatWidget from '../ChatWidget';
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -12,7 +13,6 @@ import {
   TrendingUp,
   Calendar,
   LogOut,
-  MessageCircle,
 } from 'lucide-react';
 import LogoMarchFit from '../LogoMarchFit';
 
@@ -44,9 +44,6 @@ export default function LayoutAluno() {
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  const WHATSAPP_NUTRICIONISTA = '+5511999999999';
-  const mensagemWhats = encodeURIComponent('Olá! Sou seu paciente no MarchFit e gostaria de tirar uma dúvida.');
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-950">
       {/* Header */}
@@ -76,16 +73,8 @@ export default function LayoutAluno() {
         </div>
       </main>
 
-      {/* Botão flutuante WhatsApp */}
-      <a
-        href={`https://wa.me/${WHATSAPP_NUTRICIONISTA}?text=${mensagemWhats}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="fixed bottom-24 right-4 z-20 w-13 h-13 w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 rounded-full flex items-center justify-center shadow-xl shadow-emerald-500/30 transition-all hover:scale-110"
-        title="Falar com Nutricionista"
-      >
-        <MessageCircle className="w-5 h-5 text-white" />
-      </a>
+      {/* Chat Widget (substituiu o botão fixo de WhatsApp) */}
+      <ChatWidget />
 
       {/* Navegação inferior */}
       <nav className="fixed bottom-0 inset-x-0 bg-gray-900/95 backdrop-blur-md border-t border-gray-800 z-10 safe-area-pb">

@@ -12,6 +12,7 @@ import { rotasConsultas } from './rotas/consultas';
 import { rotasFormulas } from './rotas/formulas';
 import { rotasNutricionista } from './rotas/nutricionista';
 import { middlewareErros } from './middlewares/erros';
+import { rotasChat } from './rotas/chat';
 
 const app = express();
 
@@ -39,8 +40,7 @@ app.use('/api/fichas-treino',      rotasFichasTreino);
 app.use('/api/receitas',           rotasReceitas);
 app.use('/api/progresso',          rotasProgresso);
 app.use('/api/consultas',          rotasConsultas);
-app.use('/api/formulas',           rotasFormulas);
-
+app.use('/api/formulas',           rotasFormulas);app.use('/api/waha',               rotasChat);
 // ── Handler de erros (deve ser o último) ─────────────────────────
 app.use(middlewareErros);
 

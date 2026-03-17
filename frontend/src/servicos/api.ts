@@ -1,6 +1,7 @@
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc,
   deleteDoc, query, where, setDoc, deleteField,
+  onSnapshot, orderBy, increment,
 } from 'firebase/firestore';
 import { signInWithEmailAndPassword, signOut as fbSignOut, createUserWithEmailAndPassword, signInWithPopup, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, db, googleProvider, authSecundario } from '../lib/firebase';
@@ -517,5 +518,85 @@ export const tacoServico = {
   },
 };
 
+// ─── Chat ────────────────────────────────────────────────────────
+export const chatServico = {
+  /** Ouve mensagens em tempo real de uma conversa (retorna unsubscribe). */
+  ouvirMensagens: (alunoId: string, cb: (msgs: any[]) => void): (() => void) => {
+    const q = query(
+      collection(db, 'conversas', alunoId, 'mensagens'),
+      orderBy('criadoEm', 'asc'),
+    );
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  },
+
+  /** Ouve todas as conversas de um nutricionista em tempo real. */
+  ouvirConversas: (nutricionistaId: string, cb: (convs: any[]) => void): (() => void) => {
+    const q = query(
+      collection(db, 'conversas'),
+      where('nutricionistaId', '==', nutricionistaId),
+    );
+    return onSnapshot(q, (snap) => {
+      cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+    });
+  },
+
+  /** Envia mensagem: salva no Firestore e repassa ao WAHA (fire-and-forget). */
+  enviarMensagem: async (
+    alunoId: string,
+    texto: string,
+    remetente: 'aluno' | 'nutricionista',
+    meta: { alunoNome: string; nutricionistaId: string },
+  ) => {
+    const criadoEm = ts();
+    await addDoc(collection(db, 'conversas', alunoId, 'mensagens'), {
+      texto,
+      remetente,
+      criadoEm,
+      lida: false,
+      fonte: 'app',
+    });
+    const update: Record<string, any> = {
+      alunoNome: meta.alunoNome,
+      nutricionistaId: meta.nutricionistaId,
+      ultimaMensagem: texto,
+      ultimaMensagemEm: criadoEm,
+    };
+    if (remetente === 'aluno') update.naoLidasAdmin = increment(1);
+    else update.naoLidasAluno = increment(1);
+    await setDoc(doc(db, 'conversas', alunoId), update, { merge: true });
+    // Relay via WAHA backend (fire-and-forget — não bloqueia a UI)
+    fetch('/api/waha/enviar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alunoId, texto, remetente }),
+    }).catch(() => {});
+    return ok({ texto, remetente, criadoEm });
+  },
+
+  /** Zera o contador de não lidas para o lado especificado. */
+  marcarLidas: async (alunoId: string, quem: 'aluno' | 'nutricionista') => {
+    const campo = quem === 'aluno' ? 'naoLidasAluno' : 'naoLidasAdmin';
+    try {
+      await updateDoc(doc(db, 'conversas', alunoId), { [campo]: 0 });
+    } catch {
+      // documento pode não existir ainda
+    }
+    return ok({ mensagem: 'Marcado.' });
+  },
+
+  /** Busca o nutricionista vinculado a um aluno (para exibir no header do chat). */
+  buscarNutriDoAluno: async (alunoId: string) => {
+    const alunoSnap = await getDoc(doc(db, 'alunos', alunoId));
+    if (!alunoSnap.exists()) return ok(null);
+    const alunoData = alunoSnap.data() as any;
+    const nutriId = alunoData.nutricionistaId;
+    if (!nutriId) return ok(null);
+    const nutriSnap = await getDoc(doc(db, 'nutricionistas', nutriId));
+    return ok(nutriSnap.exists() ? { id: nutriSnap.id, ...nutriSnap.data() } : null);
+  },
+};
+
 export { fbSignOut as signOut };
-export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico, anamneseServico };
+export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico, anamneseServico, chatServico };

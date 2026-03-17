@@ -259,6 +259,26 @@ export interface Anamnese {
   completadaEm?: string;
 }
 
+// ── Chat ─────────────────────────────────────────────────────────────
+export interface MensagemChat {
+  id: string;
+  texto: string;
+  remetente: 'aluno' | 'nutricionista';
+  criadoEm: string;
+  lida: boolean;
+  fonte?: 'app' | 'whatsapp';
+}
+
+export interface Conversa {
+  id: string; // = alunoId
+  alunoNome: string;
+  nutricionistaId: string;
+  ultimaMensagem?: string;
+  ultimaMensagemEm?: string;
+  naoLidasAdmin: number;
+  naoLidasAluno: number;
+}
+
 // Auth
 export type TipoPerfil = 'NUTRICIONISTA' | 'PACIENTE';
 

@@ -35,14 +35,16 @@ const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px
 const labelCls = 'block text-xs font-display text-gray-400 uppercase tracking-wider mb-1.5';
 
 const STATUS_COR: Record<string, string> = {
-  AGENDADA:  'bg-amber-500/10 text-amber-400 border-amber-500/30',
-  REALIZADA: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-  CANCELADA: 'bg-red-500/10 text-red-400 border-red-500/30',
+  AGENDADA:   'bg-amber-500/10 text-amber-400 border-amber-500/30',
+  REALIZADA:  'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+  CANCELADA:  'bg-red-500/10 text-red-400 border-red-500/30',
+  SOLICITADA: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
 };
 const STATUS_DOT: Record<string, string> = {
-  AGENDADA:  'bg-amber-400',
-  REALIZADA: 'bg-emerald-400',
-  CANCELADA: 'bg-red-400',
+  AGENDADA:   'bg-amber-400',
+  REALIZADA:  'bg-emerald-400',
+  CANCELADA:  'bg-red-400',
+  SOLICITADA: 'bg-blue-400',
 };
 
 export default function Consultas() {
@@ -51,6 +53,8 @@ export default function Consultas() {
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(new Date());
   const [mostrarModal, setMostrarModal] = useState(false);
   const [form, setForm] = useState({ alunoId: '', dataHora: '', tipo: '', observacoes: '' });
+  const [consultaParaConfirmar, setConsultaParaConfirmar] = useState<Consulta | null>(null);
+  const [confirmarForm, setConfirmarForm] = useState({ dataHora: '', tipo: '' });
 
   /* Busca o ano inteiro para mostrar no calendÃ¡rio */
   const inicio = format(startOfYear(mesAtual), "yyyy-MM-dd'T'HH:mm:ss");
@@ -79,6 +83,15 @@ export default function Consultas() {
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       consultasServico.atualizar(id, { status }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['consultas-todas'] }),
+  });
+
+  const mutConfirmar = useMutation({
+    mutationFn: ({ id, dataHora, tipo }: { id: string; dataHora: string; tipo: string }) =>
+      consultasServico.atualizar(id, { status: 'AGENDADA', dataHora, tipo }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consultas-todas'] });
+      setConsultaParaConfirmar(null);
+    },
   });
 
   /* Mapeia dia â†’ consultas */
@@ -313,6 +326,28 @@ export default function Consultas() {
                         </button>
                       </div>
                     )}
+                    {c.status === 'SOLICITADA' && (
+                      <div className="flex gap-2 pt-0.5">
+                        <button
+                          onClick={() => {
+                            setConsultaParaConfirmar(c);
+                            setConfirmarForm({
+                              dataHora: c.dataHora?.slice(0, 16) ?? '',
+                              tipo: c.tipo ?? '',
+                            });
+                          }}
+                          className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 font-semibold transition-colors"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" /> Confirmar
+                        </button>
+                        <button
+                          onClick={() => mutStatus.mutate({ id: c.id, status: 'CANCELADA' })}
+                          className="flex items-center gap-1 text-xs text-red-400 hover:text-red-300 font-semibold transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Recusar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
             )}
@@ -413,6 +448,70 @@ export default function Consultas() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmar Consulta Solicitada */}
+      {consultaParaConfirmar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="relative bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-t-2xl" />
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-white text-lg">Confirmar Consulta</h3>
+              <button
+                onClick={() => setConsultaParaConfirmar(null)}
+                className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-sm text-gray-400 mb-4">
+              Paciente: <span className="text-white font-semibold">{(consultaParaConfirmar as any).aluno?.nome ?? 'Paciente'}</span>
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className={labelCls}>Data e Hora *</label>
+                <input
+                  type="datetime-local"
+                  value={confirmarForm.dataHora}
+                  onChange={(e) => setConfirmarForm((f) => ({ ...f, dataHora: e.target.value }))}
+                  required
+                  className={inputCls}
+                />
+              </div>
+              <div>
+                <label className={labelCls}>Tipo</label>
+                <input
+                  value={confirmarForm.tipo}
+                  onChange={(e) => setConfirmarForm((f) => ({ ...f, tipo: e.target.value }))}
+                  placeholder="Ex: Avaliação, Retorno..."
+                  className={inputCls}
+                />
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setConsultaParaConfirmar(null)}
+                  className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={!confirmarForm.dataHora || mutConfirmar.isPending}
+                  onClick={() => mutConfirmar.mutate({
+                    id: consultaParaConfirmar.id,
+                    dataHora: confirmarForm.dataHora,
+                    tipo: confirmarForm.tipo,
+                  })}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-400 hover:to-indigo-400 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"
+                >
+                  {mutConfirmar.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                  Confirmar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

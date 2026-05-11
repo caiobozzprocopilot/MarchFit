@@ -6,7 +6,7 @@ import {
   LineChart, Line, XAxis, YAxis, Tooltip as ChartTooltip,
   ResponsiveContainer, CartesianGrid,
 } from 'recharts';
-import { Plus, X, Loader2, TrendingUp, Info, ChevronRight, Camera, Pencil, Images } from 'lucide-react';
+import { Plus, X, Loader2, TrendingUp, Info, ChevronRight, Camera, Pencil, Images, Trash2 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { RegistroProgresso } from '../../tipos';
@@ -129,7 +129,7 @@ function DrawerMedidas({ registro, onClose }: { registro: RegistroProgresso; onC
 /* ─── Comparador de fotos ────────────────────────────────────────── */
 type AnguloFoto = 'frente' | 'lado' | 'costas';
 
-function ComparadorFotos({ registros }: { registros: RegistroProgresso[] }) {
+function ComparadorFotos({ registros, onRemoveFoto }: { registros: RegistroProgresso[]; onRemoveFoto?: (id: string, angulo: AnguloFoto) => void }) {
   const comFoto = registros.filter((r) => r.fotoFrente || r.fotoLado || r.fotoCostas);
   const [idA, setIdA] = useState(comFoto[comFoto.length - 1]?.id ?? '');
   const [idB, setIdB] = useState(comFoto[comFoto.length - 2]?.id ?? comFoto[comFoto.length - 1]?.id ?? '');
@@ -182,8 +182,19 @@ function ComparadorFotos({ registros }: { registros: RegistroProgresso[] }) {
               <div key={`side-${i}-${r.id}`} className="space-y-2">
                 <p className="text-xs text-center text-gray-500 font-medium">{fmtData(r)}</p>
                 {src ? (
-                  <img src={src} alt={`${angulo} ${i + 1}`}
-                    className="w-full aspect-[3/4] object-cover rounded-xl bg-gray-800" />
+                  <div className="relative">
+                    <img src={src} alt={`${angulo} ${i + 1}`}
+                      className="w-full aspect-[3/4] object-cover rounded-xl bg-gray-800" />
+                    {onRemoveFoto && (
+                      <button
+                        onClick={() => onRemoveFoto(r.id, angulo)}
+                        title="Remover foto"
+                        className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-gray-300 hover:text-red-400 hover:bg-black/80 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <div className="aspect-[3/4] rounded-xl bg-gray-800 flex items-center justify-center">
                     <p className="text-xs text-gray-600">Sem foto de {angulo}</p>
@@ -402,8 +413,14 @@ export default function MeuProgresso() {
           </div>
 
           {/* Comparador de fotos */}
-          {ordenados.filter((r) => r.foto).length >= 1 && (
-            <ComparadorFotos registros={ordenados} />
+          {ordenados.filter((r) => r.fotoFrente || r.fotoLado || r.fotoCostas).length >= 1 && (
+            <ComparadorFotos
+              registros={ordenados}
+              onRemoveFoto={(registroId, ang) => {
+                const fotoKey = ang === 'frente' ? 'fotoFrente' : ang === 'lado' ? 'fotoLado' : 'fotoCostas';
+                mutAtualizar.mutate({ id: registroId, dados: { [fotoKey]: null }, fotos: fotosVazio });
+              }}
+            />
           )}
 
           {/* Gráfico */}

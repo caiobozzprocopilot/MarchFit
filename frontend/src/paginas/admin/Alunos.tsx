@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { alunosServico } from '../../servicos/api';
-import { Search, Plus, ChevronRight, Loader2, X, Lock, Unlock, Trash2 } from 'lucide-react';
+import { Search, Plus, ChevronRight, Loader2, X, Lock, Unlock, Trash2, AlertTriangle, Filter } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 import type { Aluno } from '../../tipos';
 
 interface FormAluno {
@@ -10,7 +11,6 @@ interface FormAluno {
   email: string;
   senha: string;
   telefone: string;
-  dataNascimento: string;
   objetivos: string;
 }
 
@@ -21,24 +21,12 @@ const maskTelefone = (v: string) => {
   if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 };
-const maskData = (v: string) => {
-  const d = v.replace(/\D/g, '').slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
-};
-const displayToIso = (display: string) => {
-  const d = display.replace(/\D/g, '');
-  if (d.length !== 8) return '';
-  return `${d.slice(4)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
-};
 
 const formVazio: FormAluno = {
   nome: '',
   email: '',
   senha: '',
   telefone: '',
-  dataNascimento: '',
   objetivos: '',
 };
 
@@ -47,10 +35,10 @@ export default function Alunos() {
   const queryClient = useQueryClient();
 
   const [busca, setBusca] = useState('');
+  const [filtroAtivo, setFiltroAtivo] = useState<'todos' | 'expirando' | 'expirados' | 'inativos'>('todos');
   const [mostrarModal, setMostrarModal] = useState(false);
   const [form, setForm] = useState<FormAluno>(formVazio);
   const [erroForm, setErroForm] = useState('');
-  const [dataDisplay, setDataDisplay] = useState('');
   const [alunoParaDeletar, setAlunoParaDeletar] = useState<{ id: string; nome: string } | null>(null);
 
   const { data: alunos = [], isLoading } = useQuery<Aluno[]>({
@@ -83,16 +71,49 @@ export default function Alunos() {
     },
   });
 
-  const alunosFiltrados = alunos.filter((a) =>
-    a.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    a.email?.toLowerCase().includes(busca.toLowerCase())
-  );
+  const hoje = useMemo(() => new Date(), []);
+
+  const alunosFiltrados = useMemo(() => {
+    let lista = alunos.filter((a) =>
+      a.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      a.email?.toLowerCase().includes(busca.toLowerCase())
+    );
+    if (filtroAtivo === 'expirando') {
+      lista = lista.filter((a) => {
+        if (!a.dataExpiracao) return false;
+        const dias = differenceInDays(new Date(a.dataExpiracao), hoje);
+        return dias >= 0 && dias <= 30;
+      });
+    } else if (filtroAtivo === 'expirados') {
+      lista = lista.filter((a) => {
+        if (!a.dataExpiracao) return false;
+        return differenceInDays(new Date(a.dataExpiracao), hoje) < 0;
+      });
+    } else if (filtroAtivo === 'inativos') {
+      lista = lista.filter((a) => !a.ativo);
+    }
+    return lista;
+  }, [alunos, busca, filtroAtivo, hoje]);
+
+  const contagens = useMemo(() => ({
+    expirando: alunos.filter((a) => {
+      if (!a.dataExpiracao) return false;
+      const d = differenceInDays(new Date(a.dataExpiracao), hoje);
+      return d >= 0 && d <= 30;
+    }).length,
+    expirados: alunos.filter((a) => a.dataExpiracao && differenceInDays(new Date(a.dataExpiracao), hoje) < 0).length,
+    inativos: alunos.filter((a) => !a.ativo).length,
+  }), [alunos, hoje]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErroForm('');
     if (!form.nome || !form.email || !form.senha) {
       setErroForm('Nome, email e senha são obrigatórios.');
+      return;
+    }
+    if (form.senha.length < 6) {
+      setErroForm('A senha deve ter pelo menos 6 caracteres.');
       return;
     }
     mutCriar.mutate(form);
@@ -110,7 +131,7 @@ export default function Alunos() {
           <p className="text-gray-500 text-sm mt-0.5">{alunos.length} aluno{alunos.length !== 1 && 's'} cadastrado{alunos.length !== 1 && 's'}</p>
         </div>
         <button
-          onClick={() => { setForm(formVazio); setDataDisplay(''); setErroForm(''); setMostrarModal(true); }}
+          onClick={() => { setForm(formVazio); setErroForm(''); setMostrarModal(true); }}
           className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all"
         >
           <Plus className="w-4 h-4" /> Novo Paciente
@@ -127,6 +148,32 @@ export default function Alunos() {
           onChange={(e) => setBusca(e.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-gray-900 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all"
         />
+      </div>
+
+      {/* Filtros */}
+      <div className="flex gap-2 flex-wrap">
+        {([
+          { key: 'todos',      label: 'Todos',      count: alunos.length,           cor: 'emerald' },
+          { key: 'expirando',  label: 'Expirando',  count: contagens.expirando,     cor: 'amber'   },
+          { key: 'expirados',  label: 'Expirados',  count: contagens.expirados,     cor: 'red'     },
+          { key: 'inativos',   label: 'Inativos',   count: contagens.inativos,      cor: 'gray'    },
+        ] as const).map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFiltroAtivo(f.key)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+              filtroAtivo === f.key
+                ? f.cor === 'emerald' ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : f.cor === 'amber' ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+                  : f.cor === 'red'   ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                  : 'bg-gray-700 text-gray-300 border-gray-600'
+                : 'bg-gray-900 text-gray-500 border-gray-800 hover:border-gray-700'
+            }`}
+          >
+            {f.label}
+            {f.count > 0 && <span className="bg-gray-800 rounded-full px-1.5">{f.count}</span>}
+          </button>
+        ))}
       </div>
 
       {/* Lista */}
@@ -163,7 +210,16 @@ export default function Alunos() {
                   </div>
                 )}
                 <div className="min-w-0">
-                  <p className="font-display tracking-wide text-white text-sm truncate">{aluno.nome}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="font-display tracking-wide text-white text-sm truncate">{aluno.nome}</p>
+                    {(() => {
+                      if (!aluno.dataExpiracao) return null;
+                      const dias = differenceInDays(new Date(aluno.dataExpiracao), new Date());
+                      if (dias < 0) return <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0" title="Plano expirado" />;
+                      if (dias <= 7) return <AlertTriangle className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" title={`Expira em ${dias} dias`} />;
+                      return null;
+                    })()}
+                  </div>
                   <p className="text-xs text-gray-500 truncate">{aluno.email}</p>
                 </div>
               </button>
@@ -229,29 +285,12 @@ export default function Alunos() {
 
                 <div>
                   <label className={labelCls}>Senha *</label>
-                  <input type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} className={inputCls} required />
+                  <input type="password" value={form.senha} onChange={(e) => setForm({ ...form, senha: e.target.value })} className={inputCls} minLength={6} required />
                 </div>
 
                 <div>
                   <label className={labelCls}>Telefone</label>
                   <input value={form.telefone} onChange={(e) => setForm({ ...form, telefone: maskTelefone(e.target.value) })} placeholder="(11) 99999-0000" className={inputCls} />
-                </div>
-
-                <div>
-                  <label className={labelCls}>Data de Nascimento</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={dataDisplay}
-                    onChange={(e) => {
-                      const masked = maskData(e.target.value);
-                      setDataDisplay(masked);
-                      setForm({ ...form, dataNascimento: displayToIso(masked) });
-                    }}
-                    placeholder="DD/MM/AAAA"
-                    maxLength={10}
-                    className={inputCls}
-                  />
                 </div>
 
                 <div className="sm:col-span-2">

@@ -10,6 +10,7 @@ import {
   progressoServico,
   consultasServico,
   anamneseServico,
+  treinosRealizadosServico,
 } from '../../servicos/api';
 import {
   ArrowLeft,
@@ -28,7 +29,14 @@ import {
   Target,
   Clock,
   ChevronRight,
+  ChevronDown,
   ClipboardList,
+  AlertTriangle,
+  CalendarClock,
+  History,
+  Printer,
+  Eye,
+  Images,
 } from 'lucide-react';
 import EditorPlanoAlimentar from './EditorPlanoAlimentar';
 import {
@@ -40,11 +48,11 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from 'recharts';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Aluno, PlanoAlimentar, FichaTreino, Exercicio, RegistroProgresso, Consulta, Anamnese } from '../../tipos';
 
-type Aba = 'dados' | 'plano' | 'treino' | 'progresso' | 'consultas' | 'anamnese';
+type Aba = 'dados' | 'plano' | 'treino' | 'progresso' | 'consultas' | 'anamnese' | 'metas';
 
 const abas: { key: Aba; label: string; icone: React.FC<{ className?: string }> }[] = [
   { key: 'dados',     label: 'Dados',           icone: User       },
@@ -53,6 +61,7 @@ const abas: { key: Aba; label: string; icone: React.FC<{ className?: string }> }
   { key: 'progresso', label: 'Progresso',        icone: TrendingUp },
   { key: 'consultas', label: 'Consultas',          icone: Calendar      },
   { key: 'anamnese',  label: 'Anamnese',           icone: ClipboardList },
+  { key: 'metas',     label: 'Metas',              icone: Target        },
 ];
 
 // ── Shared helpers ────────────────────────────────────────────────
@@ -81,15 +90,32 @@ const addBtn = 'flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-tea
 /* ------------------------------------------------------------------ */
 
 function AbaDados({ aluno }: { aluno: Aluno }) {
+  const queryClient = useQueryClient();
   const [enviado, setEnviado] = useState(false);
+
   const mutEnviarAcesso = useMutation({
     mutationFn: () => autenticacaoServico.esqueceuSenha(aluno.email),
     onSuccess: () => setEnviado(true),
   });
 
+  const mutExpiracao = useMutation({
+    mutationFn: (meses: number | null) => alunosServico.definirExpiracao(aluno.id, meses),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aluno', aluno.id] }),
+  });
+
   const idade = aluno.dataNascimento
     ? Math.floor((Date.now() - new Date(aluno.dataNascimento).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
     : null;
+
+  const diasRestantes = aluno.dataExpiracao
+    ? differenceInDays(new Date(aluno.dataExpiracao), new Date())
+    : null;
+
+  const statusExpiracao = diasRestantes === null ? null
+    : diasRestantes < 0 ? 'expirado'
+    : diasRestantes <= 7 ? 'urgente'
+    : diasRestantes <= 30 ? 'aviso'
+    : 'ok';
 
   return (
     <div className="space-y-3">
@@ -111,6 +137,8 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
           </div>
         ))}
       </div>
+
+      {/* Status */}
       <div className={`rounded-2xl border px-5 py-4 flex items-center gap-4 ${aluno.ativo ? 'bg-emerald-500/10 border-emerald-500/20' : 'bg-gray-800 border-gray-700'}`}>
         <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${aluno.ativo ? 'bg-emerald-400 shadow-lg shadow-emerald-500/50' : 'bg-gray-600'}`} />
         <div>
@@ -118,6 +146,85 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
           <p className={`text-sm font-bold mt-0.5 ${aluno.ativo ? 'text-emerald-400' : 'text-gray-500'}`}>{aluno.ativo ? 'Ativo' : 'Inativo'}</p>
         </div>
       </div>
+
+      {/* Expiração */}
+      <div className={`rounded-2xl border px-5 py-4 space-y-3 ${
+        statusExpiracao === 'expirado' ? 'bg-red-500/10 border-red-500/30' :
+        statusExpiracao === 'urgente'  ? 'bg-orange-500/10 border-orange-500/30' :
+        statusExpiracao === 'aviso'    ? 'bg-amber-500/10 border-amber-500/20' :
+        'bg-gray-800/60 border-gray-700'
+      }`}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className={`p-2.5 rounded-xl flex-shrink-0 ${
+              statusExpiracao === 'expirado' ? 'bg-red-500/15 border border-red-500/30' :
+              statusExpiracao === 'urgente'  ? 'bg-orange-500/15 border border-orange-500/30' :
+              statusExpiracao === 'aviso'    ? 'bg-amber-500/15 border border-amber-500/30' :
+              'bg-gray-700/60 border border-gray-600'
+            }`}>
+              {statusExpiracao === 'expirado' || statusExpiracao === 'urgente'
+                ? <AlertTriangle className={`w-4 h-4 ${statusExpiracao === 'expirado' ? 'text-red-400' : 'text-orange-400'}`} />
+                : <CalendarClock className={`w-4 h-4 ${statusExpiracao === 'aviso' ? 'text-amber-400' : 'text-gray-400'}`} />
+              }
+            </div>
+            <div>
+              <p className="font-display uppercase tracking-wider text-xs text-gray-500">Expiração do plano</p>
+              {aluno.dataExpiracao ? (
+                <p className={`text-sm font-bold mt-0.5 ${
+                  statusExpiracao === 'expirado' ? 'text-red-400' :
+                  statusExpiracao === 'urgente'  ? 'text-orange-400' :
+                  statusExpiracao === 'aviso'    ? 'text-amber-400' :
+                  'text-white'
+                }`}>
+                  {format(new Date(aluno.dataExpiracao), "dd/MM/yyyy")}
+                  {diasRestantes !== null && diasRestantes >= 0 && (
+                    <span className="text-xs font-normal text-gray-500 ml-2">({diasRestantes}d restantes)</span>
+                  )}
+                  {statusExpiracao === 'expirado' && (
+                    <span className="ml-2 text-xs font-bold text-red-400">EXPIRADO</span>
+                  )}
+                </p>
+              ) : (
+                <p className="text-sm text-gray-600 mt-0.5">Sem data definida</p>
+              )}
+            </div>
+          </div>
+          {aluno.dataExpiracao && (
+            <button
+              onClick={() => mutExpiracao.mutate(null)}
+              disabled={mutExpiracao.isPending}
+              className="text-xs text-gray-600 hover:text-red-400 transition-colors"
+              title="Remover expiração"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {([1, 3, 12] as const).map((m) => (
+            <button
+              key={m}
+              onClick={() => mutExpiracao.mutate(m)}
+              disabled={mutExpiracao.isPending}
+              className="flex-1 py-1.5 rounded-xl text-xs font-bold border border-gray-700 bg-gray-800 text-gray-300 hover:border-emerald-500/40 hover:text-emerald-400 hover:bg-emerald-500/10 disabled:opacity-50 transition-all"
+            >
+              +{m === 12 ? '1 ano' : `${m} mês${m > 1 ? 'es' : ''}`}
+            </button>
+          ))}
+        </div>
+        {(statusExpiracao === 'expirado' || statusExpiracao === 'urgente') && (
+          <div className={`rounded-xl px-3 py-2 text-xs font-semibold flex items-center gap-2 ${
+            statusExpiracao === 'expirado' ? 'bg-red-500/15 text-red-300' : 'bg-orange-500/15 text-orange-300'
+          }`}>
+            <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0" />
+            {statusExpiracao === 'expirado'
+              ? 'Plano expirado — cobrar renovação ou renovar acima.'
+              : `Expira em ${diasRestantes} dias — considere renovar.`}
+          </div>
+        )}
+      </div>
+
+      {/* Enviar acesso */}
       <div className="rounded-2xl border border-gray-700 bg-gray-800/60 px-5 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 flex-shrink-0">
@@ -136,6 +243,139 @@ function AbaDados({ aluno }: { aluno: Aluno }) {
           {enviado ? 'Email enviado ✓' : mutEnviarAcesso.isPending ? 'Enviando…' : 'Enviar acesso'}
         </button>
       </div>
+
+      {/* Calculadora TMB/TDEE */}
+      <CalculadoraTMB aluno={aluno} />
+    </div>
+  );
+}
+
+/* ─── Calculadora TMB/TDEE + Macros por kg ────────────────────── */
+const FATORES_ATIVIDADE = [
+  { label: 'Sedentário (pouco ou nenhum exercício)', fator: 1.2 },
+  { label: 'Levemente ativo (1–3x/semana)', fator: 1.375 },
+  { label: 'Moderadamente ativo (3–5x/semana)', fator: 1.55 },
+  { label: 'Muito ativo (6–7x/semana)', fator: 1.725 },
+  { label: 'Extremamente ativo (atleta, 2x/dia)', fator: 1.9 },
+];
+
+function CalculadoraTMB({ aluno }: { aluno: Aluno }) {
+  const [fatorIdx, setFatorIdx] = useState(1);
+  const [pesoCustom, setPesoCustom] = useState('');
+
+  const peso = parseFloat(pesoCustom) || aluno.pesoInicial || null;
+  const altura = aluno.altura || null;
+  const idade = aluno.dataNascimento
+    ? Math.floor((Date.now() - new Date(aluno.dataNascimento).getTime()) / (1000 * 60 * 60 * 24 * 365.25))
+    : null;
+  const sexo = aluno.sexo; // 'masculino' | 'feminino'
+
+  let tmb: number | null = null;
+  if (peso && altura && idade && sexo) {
+    if (sexo === 'masculino') {
+      tmb = Math.round((10 * peso) + (6.25 * altura) - (5 * idade) + 5);
+    } else {
+      tmb = Math.round((10 * peso) + (6.25 * altura) - (5 * idade) - 161);
+    }
+  }
+
+  const tdee = tmb ? Math.round(tmb * FATORES_ATIVIDADE[fatorIdx].fator) : null;
+
+  const inputSmall = 'bg-gray-800 border border-gray-700 rounded-xl py-2 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all';
+
+  return (
+    <div className="rounded-2xl border border-gray-700 bg-gray-800/60 px-5 py-4 space-y-4">
+      <p className="font-display uppercase tracking-wider text-xs text-gray-400">Calculadora TMB / TDEE</p>
+
+      <div className="flex items-end gap-3">
+        <div className="flex-1">
+          <label className="text-xs text-gray-500 mb-1 block">Peso (kg)</label>
+          <input
+            type="number"
+            value={pesoCustom}
+            onChange={(e) => setPesoCustom(e.target.value)}
+            placeholder={peso ? String(peso) : 'ex: 75'}
+            className={inputSmall + ' w-full'}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="text-xs text-gray-500 mb-1 block">Altura (cm)</label>
+          <input
+            type="text"
+            value={altura ?? ''}
+            readOnly
+            placeholder="—"
+            className={inputSmall + ' w-full opacity-60'}
+          />
+        </div>
+        <div className="flex-1">
+          <label className="text-xs text-gray-500 mb-1 block">Idade</label>
+          <input
+            type="text"
+            value={idade ?? ''}
+            readOnly
+            placeholder="—"
+            className={inputSmall + ' w-full opacity-60'}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-gray-500 mb-1 block">Nível de atividade</label>
+        <select
+          value={fatorIdx}
+          onChange={(e) => setFatorIdx(Number(e.target.value))}
+          className={inputSmall + ' w-full'}
+        >
+          {FATORES_ATIVIDADE.map((f, i) => (
+            <option key={i} value={i}>{f.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {tmb && tdee ? (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-gray-900 rounded-xl p-3 text-center">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">TMB</p>
+              <p className="text-2xl font-black text-emerald-400">{tmb}</p>
+              <p className="text-xs text-gray-600">kcal/dia (repouso)</p>
+            </div>
+            <div className="bg-gray-900 rounded-xl p-3 text-center">
+              <p className="text-xs text-gray-500 uppercase tracking-wider">TDEE</p>
+              <p className="text-2xl font-black text-teal-400">{tdee}</p>
+              <p className="text-xs text-gray-600">kcal/dia (ativo)</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Metas de macros por kg</p>
+            <div className="bg-gray-900 rounded-xl divide-y divide-gray-800 overflow-hidden">
+              {[
+                { macro: 'Proteína',    min: +(1.6 * peso!).toFixed(0), max: +(2.2 * peso!).toFixed(0), cor: 'text-blue-400',  sub: `1,6–2,2 g/kg` },
+                { macro: 'Carboidrato', min: +(3 * peso!).toFixed(0),   max: +(5 * peso!).toFixed(0),   cor: 'text-amber-400', sub: `3–5 g/kg` },
+                { macro: 'Gordura',     min: +(0.8 * peso!).toFixed(0), max: +(1.2 * peso!).toFixed(0), cor: 'text-pink-400',  sub: `0,8–1,2 g/kg` },
+              ].map((m) => (
+                <div key={m.macro} className="flex items-center justify-between px-3 py-2.5">
+                  <div>
+                    <span className="text-sm text-white">{m.macro}</span>
+                    <span className="text-xs text-gray-600 ml-2">({m.sub})</span>
+                  </div>
+                  <span className={`text-sm font-bold ${m.cor}`}>{m.min}–{m.max} g</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-600 mt-2">* Referências baseadas em Mifflin-St Jeor. Ajuste conforme avaliação clínica.</p>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-gray-600 text-center py-2">
+          {!sexo ? 'Sexo não preenchido no cadastro.' :
+           !altura ? 'Altura não preenchida no cadastro.' :
+           !idade ? 'Data de nascimento não preenchida.' :
+           'Informe o peso para calcular.'}
+        </p>
+      )}
     </div>
   );
 }
@@ -204,6 +444,11 @@ function AbaPlanoAlimentar({ alunoId, alunoNome }: { alunoId: string; alunoNome:
               <div>
                 <p className="font-semibold text-white">{p.nome}</p>
                 <p className="text-xs text-gray-500 mt-0.5">{p.refeicoes?.length ?? 0} refeição(ões)</p>
+                {(p as any).vistoPorAlunoEm && (
+                  <p className="text-xs text-emerald-600 mt-0.5 flex items-center gap-1">
+                    <Eye className="w-3 h-3" /> Visto pelo paciente em {format(parseISO((p as any).vistoPorAlunoEm), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-3">
                 <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${p.ativo ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
@@ -266,6 +511,7 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
   const [mostrarModalNova, setMostrarModalNova] = useState(false);
   const [novoNome, setNovoNome] = useState('');
   const [fichaAberta, setFichaAberta] = useState<FichaTreino | null>(null);
+  const [historicoTreinosAberto, setHistoricoTreinosAberto] = useState(false);
 
   // ── Level 2 state ──────────────────────────────────────────────
   const [mostrarModalAdd, setMostrarModalAdd] = useState(false);
@@ -276,6 +522,11 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
   const { data: fichas = [], isLoading } = useQuery<FichaTreino[]>({
     queryKey: ['fichas', alunoId],
     queryFn: () => fichasServico.listar({ alunoId }).then((r) => r.data),
+  });
+
+  const { data: treinosRealizados = [] } = useQuery<any[]>({
+    queryKey: ['treinos-realizados', alunoId],
+    queryFn: () => treinosRealizadosServico.listar(alunoId).then((r) => r.data),
   });
 
   const { data: itens = [] } = useQuery<ItemFicha[]>({
@@ -526,11 +777,147 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
           </div>
         </Modal>
       )}
+
+      {/* Histórico de realizações do paciente */}
+      {treinosRealizados.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setHistoricoTreinosAberto((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4"
+          >
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-violet-400" />
+              <span className="font-display uppercase tracking-wider text-sm text-white">Histórico de realizações</span>
+              <span className="text-xs bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded-full">{treinosRealizados.length}</span>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${historicoTreinosAberto ? 'rotate-180' : ''}`} />
+          </button>
+          {historicoTreinosAberto && (
+            <div className="border-t border-gray-800 divide-y divide-gray-800">
+              {[...treinosRealizados]
+                .sort((a, b) => {
+                  const t = (r: any) => r.realizadoEm?.toDate?.()?.getTime?.() ?? new Date(r.realizadoEm ?? 0).getTime();
+                  return t(b) - t(a);
+                })
+                .slice(0, 30)
+                .map((r, i) => {
+                  const dataObj = r.realizadoEm?.toDate?.() ?? new Date(r.realizadoEm ?? 0);
+                  return (
+                    <div key={r.id ?? i} className="px-5 py-3 flex items-center justify-between">
+                      <span className="text-sm text-white">{r.fichaNome ?? '—'}</span>
+                      <span className="text-xs text-gray-500">
+                        {format(dataObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
+
+type AnguloFoto = 'frente' | 'lado' | 'costas';
+
+function ComparadorFotosAdmin({ registros, alunoId }: { registros: RegistroProgresso[]; alunoId: string }) {
+  const queryClient = useQueryClient();
+  const comFoto = registros.filter((r) => r.fotoFrente || r.fotoLado || r.fotoCostas);
+  const [idA, setIdA] = useState(comFoto[comFoto.length - 1]?.id ?? '');
+  const [idB, setIdB] = useState(comFoto[comFoto.length - 2]?.id ?? comFoto[comFoto.length - 1]?.id ?? '');
+  const [angulo, setAngulo] = useState<AnguloFoto>('frente');
+
+  const mutRemoveFoto = useMutation({
+    mutationFn: ({ id, fotoKey }: { id: string; fotoKey: string }) =>
+      progressoServico.atualizar(id, { [fotoKey]: null }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['progresso', alunoId] }),
+  });
+
+  if (comFoto.length < 1) return null;
+
+  const regA = comFoto.find((r) => r.id === idA);
+  const regB = comFoto.find((r) => r.id === idB);
+  const fmtData = (r: RegistroProgresso) => format(parseISO(r.registradoEm), 'dd/MM/yyyy', { locale: ptBR });
+  const getFoto = (r: RegistroProgresso, a: AnguloFoto) =>
+    a === 'frente' ? r.fotoFrente : a === 'lado' ? r.fotoLado : r.fotoCostas;
+
+  const selectCls = 'flex-1 bg-gray-800 border border-gray-700 text-white text-xs rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-emerald-500';
+
+  return (
+    <div>
+      <p className="font-display uppercase tracking-wider text-xs text-gray-500 mb-3 flex items-center gap-2">
+        <Images className="w-3.5 h-3.5" /> Comparar fotos
+      </p>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 space-y-3">
+        <div className="flex gap-3 items-center">
+          <select value={idA} onChange={(e) => setIdA(e.target.value)} className={selectCls}>
+            {comFoto.map((r) => <option key={r.id} value={r.id}>{fmtData(r)}</option>)}
+          </select>
+          <span className="text-gray-600 text-sm font-bold">vs</span>
+          <select value={idB} onChange={(e) => setIdB(e.target.value)} className={selectCls}>
+            {comFoto.map((r) => <option key={r.id} value={r.id}>{fmtData(r)}</option>)}
+          </select>
+        </div>
+        <div className="flex gap-2">
+          {(['frente', 'lado', 'costas'] as AnguloFoto[]).map((a) => (
+            <button key={a} onClick={() => setAngulo(a)}
+              className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${
+                angulo === a ? 'bg-emerald-500 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              }`}>
+              {a.charAt(0).toUpperCase() + a.slice(1)}
+            </button>
+          ))}
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          {[regA, regB].map((r, i) => {
+            const src = r ? getFoto(r, angulo) : null;
+            return r ? (
+              <div key={`side-${i}-${r.id}`} className="space-y-2">
+                <p className="text-xs text-center text-gray-500 font-medium">{fmtData(r)}</p>
+                {src ? (
+                  <div className="relative">
+                    <img src={src} alt={`${angulo} ${i + 1}`}
+                      className="w-full aspect-[3/4] object-cover rounded-xl bg-gray-800" />
+                    <button
+                      onClick={() => {
+                        const fotoKey = angulo === 'frente' ? 'fotoFrente' : angulo === 'lado' ? 'fotoLado' : 'fotoCostas';
+                        mutRemoveFoto.mutate({ id: r.id, fotoKey });
+                      }}
+                      title="Remover foto"
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/60 text-gray-300 hover:text-red-400 hover:bg-black/80 transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="aspect-[3/4] rounded-xl bg-gray-800 flex items-center justify-center">
+                    <p className="text-xs text-gray-600">Sem foto de {angulo}</p>
+                  </div>
+                )}
+                {(r.peso || r.percentualGordura) && (
+                  <div className="text-center space-y-0.5">
+                    {r.peso && <p className="text-xs text-gray-400">Peso: <b className="text-white">{r.peso} kg</b></p>}
+                    {r.percentualGordura && <p className="text-xs text-gray-400">Gordura: <b className="text-white">{r.percentualGordura}%</b></p>}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div key={i} className="aspect-[3/4] rounded-xl bg-gray-800 flex items-center justify-center">
+                <p className="text-xs text-gray-600">Sem foto</p>
+              </div>
+            );
+          })}
+        </div>
+        {comFoto.length < 2 && (
+          <p className="text-xs text-gray-600 text-center">Adicione mais registros com foto para comparar</p>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function AbaProgresso({ alunoId }: { alunoId: string }) {
   const { data: registros = [], isLoading } = useQuery<RegistroProgresso[]>({
@@ -556,6 +943,14 @@ function AbaProgresso({ alunoId }: { alunoId: string }) {
 
   return (
     <div className="space-y-4">
+      <div className="flex justify-end">
+        <button
+          onClick={() => window.print()}
+          className="flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-700 hover:border-gray-500 rounded-xl px-3 py-2 transition-all"
+        >
+          <Printer className="w-4 h-4" /> Imprimir / PDF
+        </button>
+      </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-4 relative overflow-hidden">
           <div className="absolute -top-3 -right-3 w-16 h-16 bg-white/10 rounded-full" />
@@ -595,6 +990,8 @@ function AbaProgresso({ alunoId }: { alunoId: string }) {
           </div>
         ))}
       </div>
+
+      <ComparadorFotosAdmin registros={registros} alunoId={alunoId} />
     </div>
   );
 }
@@ -689,15 +1086,204 @@ function AbaConsultas({ alunoId }: { alunoId: string }) {
 
 /* ------------------------------------------------------------------ */
 
+function PerguntasNutriSection({
+  perguntas,
+  perguntasLocais,
+  setPerguntasLocais,
+  novaPergunta,
+  setNovaPergunta,
+  onAdd,
+  onRemove,
+  editadas,
+  onSalvar,
+  isSaving,
+  respostas,
+}: {
+  perguntas: { id: string; pergunta: string }[];
+  perguntasLocais: { id: string; pergunta: string }[];
+  setPerguntasLocais: (p: { id: string; pergunta: string }[]) => void;
+  novaPergunta: string;
+  setNovaPergunta: (v: string) => void;
+  onAdd: () => void;
+  onRemove: (id: string) => void;
+  editadas: boolean;
+  onSalvar: () => void;
+  isSaving: boolean;
+  respostas?: Record<string, string>;
+}) {
+  return (
+    <div>
+      <h4 className="font-display uppercase tracking-wider text-xs text-gray-500 mb-2 px-1">
+        Perguntas para o paciente
+        {perguntas.length > 0 && (
+          <span className="ml-2 text-gray-700 normal-case tracking-normal font-normal">
+            — o paciente responderá no app
+          </span>
+        )}
+      </h4>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        {perguntasLocais.length > 0 && (
+          <div className="divide-y divide-gray-800">
+            {perguntasLocais.map((q, i) => (
+              <div key={q.id} className="px-4 py-3 flex items-start gap-3">
+                <span className="text-xs text-gray-600 flex-shrink-0 pt-0.5">{i + 1}.</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-white">{q.pergunta}</p>
+                  {respostas?.[q.id] && (
+                    <p className="text-xs text-emerald-400 mt-1">✓ {respostas[q.id]}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => onRemove(q.id)}
+                  className="p-1 rounded text-gray-600 hover:text-red-400 transition-colors flex-shrink-0"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="p-4 flex gap-2">
+          <input
+            value={novaPergunta}
+            onChange={(e) => setNovaPergunta(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && onAdd()}
+            placeholder="Nova pergunta para o paciente…"
+            className={`${inputCls} text-sm`}
+          />
+          <button
+            onClick={onAdd}
+            disabled={!novaPergunta.trim()}
+            className="px-3 py-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/30 disabled:opacity-40 transition-all text-sm font-bold flex-shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+        {editadas && (
+          <div className="px-4 pb-4">
+            <button
+              onClick={onSalvar}
+              disabled={isSaving}
+              className={`${btnPrimary} w-full justify-center`}
+            >
+              {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+              Salvar perguntas
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
+function AbaMetas({ aluno }: { aluno: Aluno }) {
+  const queryClient = useQueryClient();
+  const [salvo, setSalvo] = useState(false);
+  const [form, setForm] = useState({
+    metaCalorica:    String((aluno as any).metaCalorica    ?? ''),
+    metaProteina:    String((aluno as any).metaProteina    ?? ''),
+    metaCarboidrato: String((aluno as any).metaCarboidrato ?? ''),
+    metaGordura:     String((aluno as any).metaGordura     ?? ''),
+    metaAgua:        String((aluno as any).metaAgua        ?? ''),
+    observacoesMetas: (aluno as any).observacoesMetas      ?? '',
+  });
+
+  const mutSalvar = useMutation({
+    mutationFn: () =>
+      alunosServico.atualizar(aluno.id, {
+        metaCalorica:    form.metaCalorica    ? Number(form.metaCalorica)    : null,
+        metaProteina:    form.metaProteina    ? Number(form.metaProteina)    : null,
+        metaCarboidrato: form.metaCarboidrato ? Number(form.metaCarboidrato) : null,
+        metaGordura:     form.metaGordura     ? Number(form.metaGordura)     : null,
+        metaAgua:        form.metaAgua        ? Number(form.metaAgua)        : null,
+        observacoesMetas: form.observacoesMetas,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aluno', aluno.id] });
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 3000);
+    },
+  });
+
+  const campos = [
+    { key: 'metaCalorica',    label: 'Calorias',     unidade: 'kcal/dia', cor: 'text-amber-400',   fundo: 'bg-amber-500/10 border-amber-500/20' },
+    { key: 'metaProteina',    label: 'Proteína',     unidade: 'g/dia',    cor: 'text-blue-400',    fundo: 'bg-blue-500/10 border-blue-500/20' },
+    { key: 'metaCarboidrato', label: 'Carboidrato',  unidade: 'g/dia',    cor: 'text-emerald-400', fundo: 'bg-emerald-500/10 border-emerald-500/20' },
+    { key: 'metaGordura',     label: 'Gordura',      unidade: 'g/dia',    cor: 'text-pink-400',    fundo: 'bg-pink-500/10 border-pink-500/20' },
+    { key: 'metaAgua',        label: 'Água',         unidade: 'ml/dia',   cor: 'text-cyan-400',    fundo: 'bg-cyan-500/10 border-cyan-500/20' },
+  ] as const;
+
+  return (
+    <div className="space-y-4">
+      <p className="text-xs text-gray-500 px-1">
+        Defina metas nutricionais individualizadas para este paciente. Estas metas poderão ser exibidas no aplicativo do aluno.
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {campos.map(({ key, label, unidade, cor, fundo }) => (
+          <div key={key} className={`rounded-2xl border px-5 py-4 ${fundo}`}>
+            <label className={`block font-display uppercase tracking-wider text-xs mb-2 ${cor}`}>{label}</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                value={form[key]}
+                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+                placeholder="—"
+                className="flex-1 bg-gray-900 border border-gray-700 rounded-xl py-2 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all"
+              />
+              <span className="text-xs text-gray-500 flex-shrink-0">{unidade}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div>
+        <label className={labelCls}>Observações / orientações</label>
+        <textarea
+          value={form.observacoesMetas}
+          onChange={(e) => setForm((f) => ({ ...f, observacoesMetas: e.target.value }))}
+          rows={3}
+          placeholder="Ex: Aumentar proteína nos dias de treino, ciclar carboidratos..."
+          className={`${inputCls} resize-none`}
+        />
+      </div>
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => mutSalvar.mutate()}
+          disabled={mutSalvar.isPending}
+          className={`${btnPrimary} flex-1 justify-center`}
+        >
+          {mutSalvar.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+          {salvo ? '✓ Metas salvas!' : 'Salvar metas'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+
 function AbaAnamnese({ alunoId }: { alunoId: string }) {
   const queryClient = useQueryClient();
   const [editandoNotas, setEditandoNotas] = useState(false);
   const [notas, setNotas] = useState('');
+  const [novaPergunta, setNovaPergunta] = useState('');
+  const [perguntas, setPerguntas] = useState<{ id: string; pergunta: string }[]>([]);
+  const [perguntasEditadas, setPerguntasEditadas] = useState(false);
 
   const { data: anamnese, isLoading } = useQuery<Anamnese | null>({
     queryKey: ['anamnese', alunoId],
     queryFn: () => anamneseServico.buscar(alunoId).then((r) => r.data),
-  });
+    onSuccess: (data: any) => {
+      if (data?.perguntasNutricionista) {
+        setPerguntas(data.perguntasNutricionista);
+      }
+    },
+  } as any);
 
   const mutNotas = useMutation({
     mutationFn: () => anamneseServico.atualizarNotas(alunoId, notas),
@@ -707,14 +1293,54 @@ function AbaAnamnese({ alunoId }: { alunoId: string }) {
     },
   });
 
+  const mutPerguntas = useMutation({
+    mutationFn: () => anamneseServico.salvarPerguntasNutri(alunoId, perguntas),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['anamnese', alunoId] });
+      setPerguntasEditadas(false);
+    },
+  });
+
+  // Sync perguntas from server when anamnese loads
+  const perguntasServidor = (anamnese as any)?.perguntasNutricionista as { id: string; pergunta: string }[] | undefined;
+
+  function addPergunta() {
+    if (!novaPergunta.trim()) return;
+    const nova = { id: crypto.randomUUID(), pergunta: novaPergunta.trim() };
+    setPerguntas((p) => [...p, nova]);
+    setNovaPergunta('');
+    setPerguntasEditadas(true);
+  }
+
+  function removePergunta(id: string) {
+    setPerguntas((p) => p.filter((q) => q.id !== id));
+    setPerguntasEditadas(true);
+  }
+
   if (isLoading) return <div className="flex justify-center pt-10"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>;
 
   if (!anamnese) {
     return (
-      <div className="text-center py-16 text-gray-600">
-        <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
-        <p className="text-sm font-semibold text-gray-500">Anamnese não preenchida</p>
-        <p className="text-xs text-gray-700 mt-1">O paciente verá este formulário ao acessar o app pela primeira vez</p>
+      <div className="space-y-4">
+        <div className="text-center py-8 text-gray-600">
+          <ClipboardList className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm font-semibold text-gray-500">Anamnese não preenchida pelo paciente</p>
+          <p className="text-xs text-gray-700 mt-1">O paciente verá o formulário ao acessar o app pela primeira vez</p>
+        </div>
+        {/* Perguntas personalizadas mesmo sem anamnese */}
+        <PerguntasNutriSection
+          perguntas={perguntasServidor ?? perguntas}
+          perguntasLocais={perguntas}
+          setPerguntasLocais={(p) => { setPerguntas(p); setPerguntasEditadas(true); }}
+          novaPergunta={novaPergunta}
+          setNovaPergunta={setNovaPergunta}
+          onAdd={addPergunta}
+          onRemove={removePergunta}
+          editadas={perguntasEditadas}
+          onSalvar={() => mutPerguntas.mutate()}
+          isSaving={mutPerguntas.isPending}
+          respostas={(anamnese as any)?.respostasPerguntas}
+        />
       </div>
     );
   }
@@ -817,6 +1443,20 @@ function AbaAnamnese({ alunoId }: { alunoId: string }) {
           )}
         </div>
       </div>
+
+      <PerguntasNutriSection
+        perguntas={perguntasServidor ?? perguntas}
+        perguntasLocais={perguntas}
+        setPerguntasLocais={(p) => { setPerguntas(p); setPerguntasEditadas(true); }}
+        novaPergunta={novaPergunta}
+        setNovaPergunta={setNovaPergunta}
+        onAdd={addPergunta}
+        onRemove={removePergunta}
+        editadas={perguntasEditadas}
+        onSalvar={() => mutPerguntas.mutate()}
+        isSaving={mutPerguntas.isPending}
+        respostas={(anamnese as any)?.respostasPerguntas}
+      />
     </div>
   );
 }
@@ -913,6 +1553,7 @@ export default function PerfilAluno() {
         {abaAtiva === 'progresso' && <AbaProgresso alunoId={id!} />}
         {abaAtiva === 'consultas' && <AbaConsultas alunoId={id!} />}
         {abaAtiva === 'anamnese'  && <AbaAnamnese alunoId={id!} />}
+        {abaAtiva === 'metas'     && <AbaMetas aluno={aluno} />}
       </div>
     </div>
   );

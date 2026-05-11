@@ -37,6 +37,13 @@ const inputCls = 'w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px
 const labelCls = 'block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5';
 const textareaCls = `${inputCls} resize-none`;
 
+const maskDateInput = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+};
+
 function PillGroup({
   valor,
   opcoes,
@@ -60,6 +67,46 @@ function PillGroup({
           }`}
         >
           {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function MultiChips({
+  valor,
+  opcoes,
+  onChange,
+}: {
+  valor: string;
+  opcoes: string[];
+  onChange: (v: string) => void;
+}) {
+  const selected = new Set(valor.split(',').map((s) => s.trim()).filter(Boolean));
+  const toggle = (item: string) => {
+    const next = new Set(selected);
+    if (item === 'Nenhuma') {
+      onChange(selected.has('Nenhuma') ? '' : 'Nenhuma');
+      return;
+    }
+    next.delete('Nenhuma');
+    if (next.has(item)) next.delete(item); else next.add(item);
+    onChange([...next].join(', '));
+  };
+  return (
+    <div className="flex flex-wrap gap-2">
+      {opcoes.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => toggle(o)}
+          className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all border ${
+            selected.has(o)
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+              : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600'
+          }`}
+        >
+          {o}
         </button>
       ))}
     </div>
@@ -182,9 +229,12 @@ export default function AnamneseModal({
                   <div>
                     <label className={labelCls}>Data de nascimento</label>
                     <input
-                      type="date"
+                      type="text"
+                      inputMode="numeric"
                       value={form.dataNascimento}
-                      onChange={(e) => set('dataNascimento', e.target.value)}
+                      onChange={(e) => set('dataNascimento', maskDateInput(e.target.value))}
+                      placeholder="DD/MM/AAAA"
+                      maxLength={10}
                       className={inputCls}
                     />
                   </div>
@@ -306,40 +356,64 @@ export default function AnamneseModal({
               <>
                 <div>
                   <label className={labelCls}>Doenças ou condições de saúde</label>
+                  <MultiChips
+                    valor={form.doencas}
+                    opcoes={['Diabetes', 'Hipertensão', 'Colesterol alto', 'Hipotireoidismo', 'Hipoglicemia', 'Ansiedade', 'Depressão', 'SII', 'Nenhuma']}
+                    onChange={(v) => set('doencas', v)}
+                  />
                   <textarea
                     value={form.doencas}
                     onChange={(e) => set('doencas', e.target.value)}
                     rows={2}
-                    className={textareaCls}
-                    placeholder="Ex: Diabetes, hipertensão, hipotireoidismo... ou 'nenhuma'"
+                    className={`${textareaCls} mt-2`}
+                    placeholder="Outras condições ou detalhes..."
                   />
                 </div>
                 <div>
                   <label className={labelCls}>Medicamentos em uso</label>
+                  <div className="mb-2">
+                    <button
+                      type="button"
+                      onClick={() => set('medicamentos', form.medicamentos === 'Não uso medicamentos' ? '' : 'Não uso medicamentos')}
+                      className={`px-3.5 py-1.5 rounded-xl text-sm font-medium transition-all border ${
+                        form.medicamentos === 'Não uso medicamentos'
+                          ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                          : 'bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      Não uso medicamentos
+                    </button>
+                  </div>
                   <textarea
-                    value={form.medicamentos}
+                    value={form.medicamentos === 'Não uso medicamentos' ? '' : form.medicamentos}
                     onChange={(e) => set('medicamentos', e.target.value)}
                     rows={2}
                     className={textareaCls}
-                    placeholder="Ex: Metformina, levotiroxina... ou 'nenhum'"
+                    placeholder="Ex: Metformina 500mg, Levotiroxina 50mcg..."
+                    disabled={form.medicamentos === 'Não uso medicamentos'}
                   />
                 </div>
                 <div>
                   <label className={labelCls}>Alergias alimentares</label>
+                  <MultiChips
+                    valor={form.alergias}
+                    opcoes={['Glúten', 'Lactose', 'Amendoim', 'Frutos do mar', 'Ovos', 'Soja', 'Nenhuma']}
+                    onChange={(v) => set('alergias', v)}
+                  />
                   <input
-                    value={form.alergias}
+                    value={form.alergias === 'Nenhuma' ? '' : form.alergias}
                     onChange={(e) => set('alergias', e.target.value)}
-                    className={inputCls}
-                    placeholder="Ex: nozes, camarão, leite... ou 'nenhuma'"
+                    className={`${inputCls} mt-2`}
+                    placeholder="Outras alergias..."
+                    disabled={form.alergias === 'Nenhuma'}
                   />
                 </div>
                 <div>
                   <label className={labelCls}>Restrições alimentares</label>
-                  <input
-                    value={form.restricoes}
-                    onChange={(e) => set('restricoes', e.target.value)}
-                    className={inputCls}
-                    placeholder="Ex: vegetariano, sem glúten, sem lactose..."
+                  <MultiChips
+                    valor={form.restricoes}
+                    opcoes={['Vegetariano', 'Vegano', 'Sem glúten', 'Sem lactose', 'Halal', 'Kosher', 'Nenhuma']}
+                    onChange={(v) => set('restricoes', v)}
                   />
                 </div>
               </>

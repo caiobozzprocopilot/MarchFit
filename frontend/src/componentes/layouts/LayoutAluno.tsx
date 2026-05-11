@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
 import { anamneseServico } from '../../servicos/api';
 import AnamneseModal from '../AnamneseModal';
+import ModalPerguntasNutri from '../ModalPerguntasNutri';
 import ChatWidget from '../ChatWidget';
 import {
   LayoutDashboard,
@@ -31,6 +32,7 @@ export default function LayoutAluno() {
 
   const alunoId = usuario?.id;
   const [skippedThisSession, setSkippedThisSession] = useState(false);
+  const [skippedPerguntas, setSkippedPerguntas] = useState(false);
 
   const { data: anamneseCheck, isLoading: loadingAnamneseCheck } = useQuery({
     queryKey: ['anamnese', alunoId],
@@ -42,6 +44,18 @@ export default function LayoutAluno() {
   const showAnamnese =
     !!alunoId && !loadingAnamneseCheck && !skippedThisSession && anamneseCheck === null;
 
+  // Show second modal if: anamnese done + nutritionist added questions + aluno hasn't answered all
+  const perguntasNutri: { id: string; pergunta: string }[] = (anamneseCheck as any)?.perguntasNutricionista ?? [];
+  const respostasExistentes: Record<string, string> = (anamneseCheck as any)?.respostasPerguntas ?? {};
+  const perguntasPendentes = perguntasNutri.filter((q) => !(respostasExistentes[q.id] || '').trim());
+  const showPerguntasNutri =
+    !!alunoId &&
+    !loadingAnamneseCheck &&
+    anamneseCheck !== null &&
+    perguntasPendentes.length > 0 &&
+    !skippedPerguntas &&
+    !showAnamnese;
+
   const handleLogout = () => { logout(); navigate('/login'); };
 
   return (
@@ -49,13 +63,13 @@ export default function LayoutAluno() {
       {/* Header */}
       <header className="bg-gray-900 border-b border-gray-800 sticky top-0 z-10">
         <div className="flex items-center justify-between px-4 py-3 max-w-2xl mx-auto">
-          <div className="flex items-center gap-2.5">
+          <Link to="/paciente/perfil" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <LogoMarchFit className="w-8 h-8 rounded-xl" />
             <div>
               <span className="text-xs text-gray-500">Bem-vindo,</span>
               <p className="font-display tracking-wide text-white text-sm leading-tight">{usuario?.nome?.split(' ')[0]}</p>
             </div>
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-red-400 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10"
@@ -112,6 +126,16 @@ export default function LayoutAluno() {
           alunoId={alunoId!}
           onComplete={() => {}}
           onSkip={() => setSkippedThisSession(true)}
+        />
+      )}
+
+      {showPerguntasNutri && (
+        <ModalPerguntasNutri
+          alunoId={alunoId!}
+          perguntas={perguntasNutri}
+          respostasExistentes={respostasExistentes}
+          onComplete={() => setSkippedPerguntas(true)}
+          onSkip={() => setSkippedPerguntas(true)}
         />
       )}
     </div>

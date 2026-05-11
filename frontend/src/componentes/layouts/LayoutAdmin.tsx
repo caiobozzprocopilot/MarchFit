@@ -1,5 +1,7 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contextos/autenticacao';
+import { useQuery } from '@tanstack/react-query';
+import { consultasServico } from '../../servicos/api';
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +33,13 @@ export default function LayoutAdmin() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
   const [menuAberto, setMenuAberto] = useState(false);
+
+  const { data: badgeSolicitadas = 0 } = useQuery({
+    queryKey: ['badge-solicitadas'],
+    queryFn: () => consultasServico.listar({ status: 'SOLICITADA' }).then((r) => (r.data as any[]).length),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -83,7 +92,12 @@ export default function LayoutAdmin() {
               }
             >
               <item.icone className="w-4 h-4 flex-shrink-0" />
-              {item.rotulo}
+              <span className="flex-1">{item.rotulo}</span>
+              {item.para === '/admin/consultas' && (badgeSolicitadas as number) > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {(badgeSolicitadas as number) > 9 ? '9+' : badgeSolicitadas}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

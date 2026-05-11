@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
 import { receitasServico } from '../../servicos/api';
-import { Loader2, Youtube, X, Clock, ChefHat } from 'lucide-react';
+import { Loader2, Youtube, X, Clock, ChefHat, Heart } from 'lucide-react';
 import type { Receita } from '../../tipos';
 
 function ModalVideo({ receita, onFechar }: { receita: Receita; onFechar: () => void }) {
@@ -35,7 +35,7 @@ function ModalVideo({ receita, onFechar }: { receita: Receita; onFechar: () => v
   );
 }
 
-function CardReceita({ receita, aoClicar }: { receita: Receita; aoClicar: () => void }) {
+function CardReceita({ receita, aoClicar, favorita, onToggleFavorita }: { receita: Receita; aoClicar: () => void; favorita: boolean; onToggleFavorita: () => void }) {
   const thumbUrl = receita.youtubeVideoId
     ? `https://img.youtube.com/vi/${receita.youtubeVideoId}/hqdefault.jpg`
     : null;
@@ -61,9 +61,17 @@ function CardReceita({ receita, aoClicar }: { receita: Receita; aoClicar: () => 
       )}
 
       <div className="p-4">
-        <h3 className="font-display tracking-wide text-white text-sm line-clamp-2 mb-2">
-          {receita.nome}
-        </h3>
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <h3 className="font-display tracking-wide text-white text-sm line-clamp-2">
+            {receita.nome}
+          </h3>
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleFavorita(); }}
+            className={`flex-shrink-0 p-1 rounded-lg transition-colors ${favorita ? 'text-amber-400' : 'text-gray-600 hover:text-amber-400'}`}
+          >
+            <Heart className={`w-4 h-4 ${favorita ? 'fill-amber-400' : ''}`} />
+          </button>
+        </div>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-xs text-gray-500">
@@ -90,6 +98,25 @@ export default function MinhasReceitas() {
   const [receitaAberta, setReceitaAberta] = useState<Receita | null>(null);
   const [filtro, setFiltro] = useState('');
 
+  const [favoritas, setFavoritas] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem(`favoritas_receitas_${alunoId}`);
+      return new Set(saved ? JSON.parse(saved) : []);
+    } catch {
+      return new Set();
+    }
+  });
+
+  const toggleFavorita = (id: string) => {
+    setFavoritas((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      localStorage.setItem(`favoritas_receitas_${alunoId}`, JSON.stringify([...next]));
+      return next;
+    });
+  };
+
   const { data: receitas = [], isLoading } = useQuery<Receita[]>({
     queryKey: ['receitas-aluno', alunoId],
     queryFn: () => receitasServico.listarPorAluno(alunoId).then((r) => r.data),
@@ -97,7 +124,10 @@ export default function MinhasReceitas() {
   });
 
   const categorias = [...new Set(receitas.map((r) => r.categoria).filter(Boolean))];
-  const filtradas = receitas.filter((r) => !filtro || r.categoria === filtro);
+  const filtradas = receitas.filter((r) => {
+    if (filtro === '__favoritas__') return favoritas.has(r.id);
+    return !filtro || r.categoria === filtro;
+  });
 
   if (isLoading) {
     return (
@@ -125,6 +155,16 @@ export default function MinhasReceitas() {
           >
             Todas
           </button>
+          {favoritas.size > 0 && (
+            <button
+              onClick={() => setFiltro('__favoritas__')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-display uppercase tracking-wider border transition-colors ${
+                filtro === '__favoritas__' ? 'bg-amber-500 text-white border-amber-500' : 'bg-gray-900 text-gray-400 border-gray-700'
+              }`}
+            >
+              <Heart className="w-3 h-3" /> Favoritas
+            </button>
+          )}
           {categorias.map((cat) => (
             <button
               key={cat}
@@ -148,7 +188,13 @@ export default function MinhasReceitas() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {filtradas.map((r) => (
-            <CardReceita key={r.id} receita={r} aoClicar={() => setReceitaAberta(r)} />
+            <CardReceita
+              key={r.id}
+              receita={r}
+              aoClicar={() => setReceitaAberta(r)}
+              favorita={favoritas.has(r.id)}
+              onToggleFavorita={() => toggleFavorita(r.id)}
+            />
           ))}
         </div>
       )}

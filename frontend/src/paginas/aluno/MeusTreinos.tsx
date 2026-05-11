@@ -1,7 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
-import { fichasServico } from '../../servicos/api';
-import { Loader2, Dumbbell, ExternalLink } from 'lucide-react';
+import { fichasServico, treinosRealizadosServico } from '../../servicos/api';
+import { Loader2, Dumbbell, ExternalLink, CheckCircle2, History, ChevronDown } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import type { FichaTreino, ExercicioFicha } from '../../tipos';
 
 const corNivel: Record<string, string> = {
@@ -10,7 +13,7 @@ const corNivel: Record<string, string> = {
   AVANCADO: 'bg-red-500/20 text-red-300',
 };
 
-function CardFicha({ ficha }: { ficha: FichaTreino }) {
+function CardFicha({ ficha, realizadoHoje, onMarcar }: { ficha: FichaTreino; realizadoHoje: boolean; onMarcar: () => void }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
@@ -71,19 +74,68 @@ function CardFicha({ ficha }: { ficha: FichaTreino }) {
           ))}
         </div>
       )}
+
+      {/* Marcar como feito */}
+      <div className="px-5 py-3 border-t border-gray-800">
+        {realizadoHoje ? (
+          <div className="flex items-center gap-2 text-emerald-400">
+            <CheckCircle2 className="w-4 h-4" />
+            <span className="text-sm font-semibold">Treino feito hoje!</span>
+          </div>
+        ) : (
+          <button
+            onClick={onMarcar}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm font-semibold hover:bg-emerald-500/20 transition-all"
+          >
+            <CheckCircle2 className="w-4 h-4" /> Marcar como feito hoje
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function MeusTreinos() {
   const { usuario } = useAuth();
+  const queryClient = useQueryClient();
   const alunoId = (usuario as any)?.id;
+
+  const hoje = format(new Date(), 'yyyy-MM-dd');
 
   const { data: fichas = [], isLoading } = useQuery<FichaTreino[]>({
     queryKey: ['fichas', alunoId],
     queryFn: () => fichasServico.listar({ alunoId }).then((r) => r.data),
     enabled: !!alunoId,
   });
+
+  const { data: realizados = [] } = useQuery<any[]>({
+    queryKey: ['treinos-realizados', alunoId],
+    queryFn: () => treinosRealizadosServico.listar(alunoId!).then((r) => r.data),
+    enabled: !!alunoId,
+  });
+
+  const mutRealizar = useMutation({
+    mutationFn: ({ fichaId, fichaNome }: { fichaId: string; fichaNome: string }) =>
+      treinosRealizadosServico.criar(alunoId!, fichaId, fichaNome),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['treinos-realizados', alunoId] }),
+  });
+
+  const realizadosHoje = new Set(
+    realizados
+      .filter((r) => {
+        const data = r.realizadoEm?.toDate?.()?.toISOString?.()?.slice(0, 10) ?? r.realizadoEm?.slice?.(0, 10);
+        return data === hoje;
+      })
+      .map((r) => r.fichaId),
+  );
+
+  const [historicoAberto, setHistoricoAberto] = useState(false);
+  const historicoOrdenado = [...realizados]
+    .sort((a, b) => {
+      const getTime = (r: any) => r.realizadoEm?.toDate?.()?.getTime?.() ?? new Date(r.realizadoEm ?? 0).getTime();
+      return getTime(b) - getTime(a);
+    })
+    .slice(0, 30);
 
   const fichasAtivas = fichas.filter((f) => f.ativo);
 
@@ -113,8 +165,48 @@ export default function MeusTreinos() {
       ) : (
         <div className="space-y-4">
           {fichasAtivas.map((f) => (
-            <CardFicha key={f.id} ficha={f} />
+            <CardFicha
+              key={f.id}
+              ficha={f}
+              realizadoHoje={realizadosHoje.has(f.id)}
+              onMarcar={() => mutRealizar.mutate({ fichaId: f.id, fichaNome: f.nome })}
+            />
           ))}
+        </div>
+      )}
+
+      {/* Histórico de realizações */}
+      {realizados.length > 0 && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setHistoricoAberto((v) => !v)}
+            className="w-full flex items-center justify-between px-5 py-4"
+          >
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-violet-400" />
+              <span className="font-display uppercase tracking-wider text-sm text-white">Histórico</span>
+              <span className="text-xs bg-violet-500/20 text-violet-400 px-2 py-0.5 rounded-full">{realizados.length}</span>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${historicoAberto ? 'rotate-180' : ''}`} />
+          </button>
+          {historicoAberto && (
+            <div className="border-t border-gray-800 divide-y divide-gray-800">
+              {historicoOrdenado.map((r, i) => {
+                const dataObj = r.realizadoEm?.toDate?.() ?? new Date(r.realizadoEm ?? 0);
+                return (
+                  <div key={r.id ?? i} className="px-5 py-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                      <span className="text-sm text-white">{r.fichaNome ?? '—'}</span>
+                    </div>
+                    <span className="text-xs text-gray-500">
+                      {format(dataObj, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
-import { planosServico, alimentosServico } from '../../servicos/api';
-import { Loader2, Utensils, Clock, Droplets, Dumbbell, ArrowRightLeft, X, Search } from 'lucide-react';
+import { planosServico, alimentosServico, alunosServico } from '../../servicos/api';
+import { Loader2, Utensils, Clock, Droplets, Dumbbell, ArrowRightLeft, X, Search, ChevronDown } from 'lucide-react';
 
 // ── Types (matching what carregarEditor returns)
 type Item = {
@@ -14,6 +14,8 @@ type Item = {
   proteinasP100g: number;
   carboidratosP100g: number;
   gordurasP100g: number;
+  fibrasP100g?: number | null;
+  sodioP100g?: number | null;
 };
 type Refeicao = {
   id: string;
@@ -41,13 +43,15 @@ function calcMacros(itens: Item[]) {
     (acc, it) => {
       const f = it.quantidade / 100;
       return {
-        kcal: acc.kcal + it.caloriasP100g * f,
-        prot: acc.prot + it.proteinasP100g * f,
-        carb: acc.carb + it.carboidratosP100g * f,
-        gord: acc.gord + it.gordurasP100g * f,
+        kcal:   acc.kcal   + it.caloriasP100g    * f,
+        prot:   acc.prot   + it.proteinasP100g   * f,
+        carb:   acc.carb   + it.carboidratosP100g * f,
+        gord:   acc.gord   + it.gordurasP100g    * f,
+        fibras: acc.fibras + (it.fibrasP100g ?? 0) * f,
+        sodio:  acc.sodio  + (it.sodioP100g  ?? 0) * f,
       };
     },
-    { kcal: 0, prot: 0, carb: 0, gord: 0 },
+    { kcal: 0, prot: 0, carb: 0, gord: 0, fibras: 0, sodio: 0 },
   );
 }
 
@@ -180,6 +184,71 @@ function ModalSubstituicao({ item, onFechar }: { item: Item; onFechar: () => voi
   );
 }
 
+// ── Item row with expandable nutritional label
+function ItemRow({ it, f, onSubst }: { it: Item; f: number; onSubst: () => void }) {
+  const [expandido, setExpandido] = useState(false);
+  const hasFibras = (it.fibrasP100g ?? 0) > 0;
+  const hasSodio  = (it.sodioP100g  ?? 0) > 0;
+  const hasExtra  = hasFibras || hasSodio;
+
+  return (
+    <div className="border-b border-gray-800/60 last:border-0">
+      <div className="px-5 py-3 flex items-center justify-between gap-3">
+        <button
+          onClick={() => hasExtra && setExpandido((v) => !v)}
+          className={`flex items-center gap-1.5 flex-1 min-w-0 text-left ${hasExtra ? 'cursor-pointer' : 'cursor-default'}`}
+        >
+          {hasExtra && (
+            <ChevronDown className={`w-3.5 h-3.5 text-gray-600 flex-shrink-0 transition-transform ${expandido ? 'rotate-180' : ''}`} />
+          )}
+          <p className="text-sm font-semibold text-white truncate">{it.nome}</p>
+        </button>
+        <div className="flex items-center gap-3 text-xs tabular-nums flex-shrink-0">
+          <span className="text-gray-500">{it.quantidade}g</span>
+          {it.caloriasP100g > 0 && (
+            <span className="text-yellow-400/80">{r1(it.caloriasP100g * f)} kcal</span>
+          )}
+          {it.proteinasP100g > 0 && (
+            <span className="text-blue-400/80 hidden sm:inline">{r1(it.proteinasP100g * f)}g P</span>
+          )}
+          {it.caloriasP100g > 0 && (
+            <button
+              onClick={onSubst}
+              title="Substituir alimento"
+              className="p-1 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+      {expandido && (
+        <div className="px-5 pb-3">
+          <div className="bg-gray-800/60 rounded-xl p-3 text-xs space-y-2">
+            <p className="font-display uppercase tracking-wider text-gray-500 text-xs">Informação Nutricional · {it.quantidade}g</p>
+            <div className="grid grid-cols-3 gap-x-4 gap-y-1.5">
+              {[
+                { label: 'Energia',  val: `${r1(it.caloriasP100g    * f)} kcal`, cor: 'text-yellow-400' },
+                { label: 'Proteínas', val: `${r1(it.proteinasP100g   * f)}g`,     cor: 'text-blue-400'  },
+                { label: 'Carb.',    val: `${r1(it.carboidratosP100g * f)}g`,     cor: 'text-orange-400'},
+                { label: 'Gorduras', val: `${r1(it.gordurasP100g     * f)}g`,     cor: 'text-red-400'   },
+                hasFibras ? { label: 'Fibras', val: `${r1((it.fibrasP100g ?? 0) * f)}g`, cor: 'text-green-400' }   : null,
+                hasSodio  ? { label: 'Sódio',  val: `${Math.round((it.sodioP100g  ?? 0) * f)}mg`, cor: 'text-purple-400' } : null,
+              ].filter(Boolean).map((row) => row && (
+                <div key={row.label} className="flex justify-between items-baseline gap-1">
+                  <span className="text-gray-500">{row.label}</span>
+                  <span className={`font-bold ${row.cor}`}>{row.val}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-gray-600 text-xs border-t border-gray-700 pt-1.5">Por 100g: {it.caloriasP100g} kcal · {it.proteinasP100g}g P · {it.carboidratosP100g}g C · {it.gordurasP100g}g G{hasFibras ? ` · ${it.fibrasP100g}g Fib` : ''}{ hasSodio ? ` · ${it.sodioP100g}mg Na` : ''}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Meal card
 function CardRefeicao({ refeicao }: { refeicao: Refeicao }) {
   const grupos = agruparOpcoes(refeicao.itens);
@@ -246,29 +315,7 @@ function CardRefeicao({ refeicao }: { refeicao: Refeicao }) {
         <div className="divide-y divide-gray-800/60">
           {itensAtivos.map((it) => {
             const f = it.quantidade / 100;
-            return (
-              <div key={it.id} className="px-5 py-3 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-white flex-1 min-w-0 truncate">{it.nome}</p>
-                <div className="flex items-center gap-3 text-xs tabular-nums flex-shrink-0">
-                  <span className="text-gray-500">{it.quantidade}g</span>
-                  {it.caloriasP100g > 0 && (
-                    <span className="text-yellow-400/80">{r1(it.caloriasP100g * f)} kcal</span>
-                  )}
-                  {it.proteinasP100g > 0 && (
-                    <span className="text-blue-400/80 hidden sm:inline">{r1(it.proteinasP100g * f)}g P</span>
-                  )}
-                  {it.caloriasP100g > 0 && (
-                    <button
-                      onClick={() => setItemSubst(it)}
-                      title="Substituir alimento"
-                      className="p-1 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
-                    >
-                      <ArrowRightLeft className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
+            return <ItemRow key={it.id} it={it} f={f} onSubst={() => setItemSubst(it)} />;
           })}
         </div>
       )}
@@ -280,17 +327,35 @@ function CardRefeicao({ refeicao }: { refeicao: Refeicao }) {
 
       {/* Per-opcao macros footer */}
       {macros.kcal > 0 && (
-        <div className="px-5 py-3 bg-gray-800/40 grid grid-cols-3 gap-2">
-          {[
-            { label: 'Proteínas', valor: r1(macros.prot), cor: 'bg-blue-500/15 text-blue-300' },
-            { label: 'Carboidratos', valor: r1(macros.carb), cor: 'bg-amber-500/15 text-amber-300' },
-            { label: 'Gorduras', valor: r1(macros.gord), cor: 'bg-red-500/15 text-red-300' },
-          ].map((m) => (
-            <div key={m.label} className={`rounded-xl px-2 py-2 ${m.cor} text-center`}>
-              <p className="font-display uppercase tracking-wider text-xs opacity-70 truncate">{m.label}</p>
-              <p className="font-black text-sm">{m.valor}g</p>
+        <div className="px-5 py-3 bg-gray-800/40 space-y-2">
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { label: 'Proteínas',    valor: `${r1(macros.prot)}g`,  cor: 'bg-blue-500/15 text-blue-300'   },
+              { label: 'Carboidratos', valor: `${r1(macros.carb)}g`,  cor: 'bg-amber-500/15 text-amber-300'  },
+              { label: 'Gorduras',     valor: `${r1(macros.gord)}g`,  cor: 'bg-red-500/15 text-red-300'      },
+            ].map((m) => (
+              <div key={m.label} className={`rounded-xl px-2 py-2 ${m.cor} text-center`}>
+                <p className="font-display uppercase tracking-wider text-xs opacity-70 truncate">{m.label}</p>
+                <p className="font-black text-sm">{m.valor}</p>
+              </div>
+            ))}
+          </div>
+          {(macros.fibras > 0 || macros.sodio > 0) && (
+            <div className="grid grid-cols-2 gap-2">
+              {macros.fibras > 0 && (
+                <div className="rounded-xl px-2 py-2 bg-green-500/15 text-green-300 text-center">
+                  <p className="font-display uppercase tracking-wider text-xs opacity-70">Fibras</p>
+                  <p className="font-black text-sm">{r1(macros.fibras)}g</p>
+                </div>
+              )}
+              {macros.sodio > 0 && (
+                <div className="rounded-xl px-2 py-2 bg-purple-500/15 text-purple-300 text-center">
+                  <p className="font-display uppercase tracking-wider text-xs opacity-70">Sódio</p>
+                  <p className="font-black text-sm">{Math.round(macros.sodio)}mg</p>
+                </div>
+              )}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -326,6 +391,18 @@ export default function MeuPlanoAlimentar() {
     queryFn: () => planosServico.buscar(planoId!).then((r: any) => r.data),
     enabled: !!planoId,
   });
+
+  const { data: alunoExtra } = useQuery<any>({
+    queryKey: ['aluno-dados', alunoId],
+    queryFn: () => alunosServico.buscar(alunoId!).then((r: any) => r.data),
+    enabled: !!alunoId,
+  });
+
+  // Mark plan as viewed by aluno
+  useEffect(() => {
+    if (!planoId) return;
+    planosServico.atualizar(planoId, { vistoPorAlunoEm: new Date().toISOString() }).catch(() => {});
+  }, [planoId]);
 
   const totais = useMemo(
     () => calcMacros(refeicoes.flatMap((rf) => rf.itens.filter((it) => (it.opcaoIndex ?? 0) === 0))),
@@ -388,18 +465,66 @@ export default function MeuPlanoAlimentar() {
 
       {/* ── Macros totais */}
       {totais.kcal > 0 && (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 grid grid-cols-4 gap-3">
-          {[
-            { label: 'Kcal',  valor: String(r1(totais.kcal)),  cor: 'text-yellow-400' },
-            { label: 'Prot.', valor: `${r1(totais.prot)}g`,    cor: 'text-blue-400'   },
-            { label: 'Carb.', valor: `${r1(totais.carb)}g`,    cor: 'text-orange-400' },
-            { label: 'Gord.', valor: `${r1(totais.gord)}g`,    cor: 'text-red-400'    },
-          ].map((m) => (
-            <div key={m.label} className="text-center">
-              <p className="font-display text-xs uppercase tracking-wider text-gray-500">{m.label}</p>
-              <p className={`text-lg font-black mt-0.5 ${m.cor}`}>{m.valor}</p>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
+          <div className="grid grid-cols-4 gap-3">
+            {[
+              { label: 'Kcal',  valor: String(r1(totais.kcal)),  cor: 'text-yellow-400' },
+              { label: 'Prot.', valor: `${r1(totais.prot)}g`,    cor: 'text-blue-400'   },
+              { label: 'Carb.', valor: `${r1(totais.carb)}g`,    cor: 'text-orange-400' },
+              { label: 'Gord.', valor: `${r1(totais.gord)}g`,    cor: 'text-red-400'    },
+            ].map((m) => (
+              <div key={m.label} className="text-center">
+                <p className="font-display text-xs uppercase tracking-wider text-gray-500">{m.label}</p>
+                <p className={`text-lg font-black mt-0.5 ${m.cor}`}>{m.valor}</p>
+              </div>
+            ))}
+          </div>
+          {(totais.fibras > 0 || totais.sodio > 0) && (
+            <div className="border-t border-gray-800 pt-3 grid grid-cols-2 gap-3">
+              {totais.fibras > 0 && (
+                <div className="text-center">
+                  <p className="font-display text-xs uppercase tracking-wider text-gray-500">Fibras</p>
+                  <p className="text-lg font-black mt-0.5 text-green-400">{r1(totais.fibras)}g</p>
+                </div>
+              )}
+              {totais.sodio > 0 && (
+                <div className="text-center">
+                  <p className="font-display text-xs uppercase tracking-wider text-gray-500">Sódio</p>
+                  <p className="text-lg font-black mt-0.5 text-purple-400">{Math.round(totais.sodio)}mg</p>
+                </div>
+              )}
             </div>
-          ))}
+          )}
+        </div>
+      )}
+
+      {/* ── Comparativo com metas */}
+      {totais.kcal > 0 && (alunoExtra?.metaCalorica || alunoExtra?.metaProteina) && (
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl px-5 py-4 space-y-3">
+          <p className="font-display uppercase tracking-wider text-xs text-gray-500">Comparativo com suas metas</p>
+          {(
+            [
+              { label: 'Calorias',     realizado: totais.kcal, meta: alunoExtra?.metaCalorica,    cor: 'bg-yellow-400', unit: 'kcal' },
+              { label: 'Proteínas',    realizado: totais.prot, meta: alunoExtra?.metaProteina,    cor: 'bg-blue-400',   unit: 'g'    },
+              { label: 'Carboidratos', realizado: totais.carb, meta: alunoExtra?.metaCarboidrato, cor: 'bg-orange-400', unit: 'g'    },
+              { label: 'Gorduras',     realizado: totais.gord, meta: alunoExtra?.metaGordura,     cor: 'bg-red-400',    unit: 'g'    },
+            ] as { label: string; realizado: number; meta: number | undefined; cor: string; unit: string }[]
+          ).filter((m) => m.meta).map((m) => {
+            const pct = Math.min(100, Math.round((m.realizado / m.meta!) * 100));
+            return (
+              <div key={m.label}>
+                <div className="flex justify-between text-xs mb-1.5">
+                  <span className="text-gray-400">{m.label}</span>
+                  <span className="text-white font-semibold">
+                    {r1(m.realizado)}{m.unit} <span className="text-gray-500">/ {m.meta}{m.unit}</span>
+                  </span>
+                </div>
+                <div className="w-full bg-gray-800 rounded-full h-1.5">
+                  <div className={`h-1.5 rounded-full ${m.cor} transition-all duration-500`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
 

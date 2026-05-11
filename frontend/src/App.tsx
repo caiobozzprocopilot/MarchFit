@@ -24,6 +24,7 @@ const MeusTreinos        = lazy(() => import('./paginas/aluno/MeusTreinos'));
 const MinhasReceitas     = lazy(() => import('./paginas/aluno/MinhasReceitas'));
 const MeuProgresso       = lazy(() => import('./paginas/aluno/MeuProgresso'));
 const MinhasConsultas    = lazy(() => import('./paginas/aluno/MinhasConsultas'));
+const MeuPerfil          = lazy(() => import('./paginas/aluno/MeuPerfil'));
 
 function PageSpinner() {
   return (
@@ -80,6 +81,7 @@ export default function App() {
           <Route path="receitas" element={<Suspense fallback={<PageSpinner />}><MinhasReceitas /></Suspense>} />
           <Route path="progresso" element={<Suspense fallback={<PageSpinner />}><MeuProgresso /></Suspense>} />
           <Route path="consultas" element={<Suspense fallback={<PageSpinner />}><MinhasConsultas /></Suspense>} />
+          <Route path="perfil" element={<Suspense fallback={<PageSpinner />}><MeuPerfil /></Suspense>} />
         </Route>
 
         {/* Rota 404 */}

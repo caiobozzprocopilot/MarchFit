@@ -1,25 +1,57 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
-import { consultasServico } from '../../servicos/api';
-import { Loader2, Calendar, MessageSquare } from 'lucide-react';
+import { consultasServico, nutricionistaServico } from '../../servicos/api';
+import { Loader2, Calendar, MessageSquare, Plus, X, Send } from 'lucide-react';
 import { format, parseISO, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Consulta } from '../../tipos';
 
 const STATUS_COR: Record<string, string> = {
-  AGENDADA: 'bg-amber-500/20 text-amber-300',
-  REALIZADA: 'bg-emerald-500/20 text-emerald-300',
-  CANCELADA: 'bg-red-500/20 text-red-300',
+  AGENDADA:   'bg-amber-500/20 text-amber-300',
+  REALIZADA:  'bg-emerald-500/20 text-emerald-300',
+  CANCELADA:  'bg-red-500/20 text-red-300',
+  SOLICITADA: 'bg-blue-500/20 text-blue-300',
 };
 
 export default function MinhasConsultas() {
   const { usuario } = useAuth();
+  const queryClient = useQueryClient();
   const alunoId = (usuario as any)?.id;
+  const nutricionistaId = usuario?.nutricionistaId;
+
+  const { data: nutri } = useQuery({
+    queryKey: ['nutri-perfil', nutricionistaId],
+    queryFn: () => nutricionistaServico.buscarPorId(nutricionistaId!).then((r) => r.data),
+    enabled: !!nutricionistaId,
+  });
+
+  const [showModal, setShowModal] = useState(false);
+  const [dataDesejada, setDataDesejada] = useState('');
+  const [tipo, setTipo] = useState('');
+  const [observacoes, setObservacoes] = useState('');
+  const [erroSolicitar, setErroSolicitar] = useState('');
 
   const { data: consultas = [], isLoading } = useQuery<Consulta[]>({
     queryKey: ['consultas', alunoId],
     queryFn: () => consultasServico.listar({ alunoId }).then((r) => r.data),
     enabled: !!alunoId,
+  });
+
+  const mutSolicitar = useMutation({
+    mutationFn: () => consultasServico.solicitarConsulta({
+      dataHora: dataDesejada,
+      tipo,
+      observacoes,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consultas', alunoId] });
+      setShowModal(false);
+      setDataDesejada(''); setTipo(''); setObservacoes(''); setErroSolicitar('');
+    },
+    onError: (e: any) => {
+      setErroSolicitar(e?.message || 'Erro ao solicitar consulta.');
+    },
   });
 
   const proximas = consultas
@@ -30,7 +62,7 @@ export default function MinhasConsultas() {
     .filter((c) => !proximas.includes(c))
     .sort((a, b) => new Date(b.dataHora).getTime() - new Date(a.dataHora).getTime());
 
-  const whatsapp = (usuario as any)?.nutricionista?.whatsapp ?? '+55119999999999';
+  const whatsapp = (nutri as any)?.whatsapp ?? '';
   const msgWpp = encodeURIComponent('Olá! Gostaria de agendar uma consulta.');
 
   if (isLoading) {
@@ -43,10 +75,86 @@ export default function MinhasConsultas() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-white">Minhas Consultas</h1>
-        <p className="text-gray-500 text-sm mt-1">{consultas.length} consulta(s) no total</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-white">Minhas Consultas</h1>
+          <p className="text-gray-500 text-sm mt-1">{consultas.length} consulta(s) no total</p>
+        </div>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white px-4 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-emerald-500/20 transition-all"
+        >
+          <Plus className="w-4 h-4" /> Solicitar
+        </button>
       </div>
+
+      {/* Modal de solicitação */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-bold text-white">Solicitar Consulta</h3>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Data e horário desejado</label>
+                <input
+                  type="datetime-local"
+                  value={dataDesejada}
+                  onChange={(e) => setDataDesejada(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Tipo de consulta</label>
+                <select
+                  value={tipo}
+                  onChange={(e) => setTipo(e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all"
+                >
+                  <option value="">Selecione...</option>
+                  <option value="Consulta inicial">Consulta inicial</option>
+                  <option value="Retorno">Retorno</option>
+                  <option value="Avaliação antropométrica">Avaliação antropométrica</option>
+                  <option value="Revisão de plano">Revisão de plano</option>
+                  <option value="Online">Online</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1.5">Observações (opcional)</label>
+                <textarea
+                  value={observacoes}
+                  onChange={(e) => setObservacoes(e.target.value)}
+                  rows={3}
+                  placeholder="Ex: prefiro horário da manhã..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 px-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all resize-none"
+                />
+              </div>
+              {erroSolicitar && (
+                <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2">{erroSolicitar}</p>
+              )}
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setShowModal(false)} className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all">
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => { setErroSolicitar(''); if (!dataDesejada) { setErroSolicitar('Informe a data desejada.'); return; } mutSolicitar.mutate(); }}
+                  disabled={mutSolicitar.isPending}
+                  className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {mutSolicitar.isPending ? 'Enviando…' : 'Solicitar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Botão de contato */}
       <a

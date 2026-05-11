@@ -140,6 +140,7 @@ export const autenticacaoServico = {
 
 // ─── Nutricionista ───────────────────────────────────────────────
 export const nutricionistaServico = {
+  buscarPorId: async (id: string) => ok(snap2one(await getDoc(doc(db, 'nutricionistas', id)))),
   perfil: async () => {
     const u = auth.currentUser; if (!u) throw new Error('Não autenticado.');
     const snap = await getDocs(query(collection(db, 'nutricionistas'), where('email', '==', u.email)));
@@ -159,8 +160,18 @@ export const nutricionistaServico = {
       getDocs(collection(db, 'registros_progresso')),
     ]);
     const hoje = new Date().toISOString().slice(0, 10);
+    const em30dias = new Date(); em30dias.setDate(em30dias.getDate() + 30);
+    const em30str = em30dias.toISOString().slice(0, 10);
     const alunosAtivos = alunosSnap.docs.filter((d) => d.data().ativo !== false);
     const consultasHoje = consultasSnap.docs.filter((d) => (d.data().dataHora || '').slice(0, 10) === hoje).length;
+    const expirando = alunosSnap.docs.filter((d) => {
+      const exp = d.data().dataExpiracao as string | undefined;
+      return exp && exp >= hoje && exp <= em30str;
+    }).length;
+    const expirados = alunosSnap.docs.filter((d) => {
+      const exp = d.data().dataExpiracao as string | undefined;
+      return exp && exp < hoje;
+    }).length;
     const activoIds = new Set(alunosAtivos.map((a) => a.id));
     const alunosMap = new Map(alunosSnap.docs.map((d) => [d.id, { id: d.id, nome: (d.data() as any).nome }]));
     const proximasConsultas = consultasSnap.docs
@@ -180,6 +191,8 @@ export const nutricionistaServico = {
       alunosAtivos: alunosAtivos.length,
       consultasHoje,
       totalReceitas: receitasSnap.size,
+      expirando,
+      expirados,
       proximasConsultas,
       ultimosProgressos: progressoSnap.docs.filter((d) => activoIds.has(d.data().alunoId)).slice(0, 5).map((d) => ({ id: d.id, ...d.data() })),
     });
@@ -235,6 +248,13 @@ export const alunosServico = {
   toggleAtivo: async (id: string, ativo: boolean) => {
     await updateDoc(doc(db, 'alunos', id), { ativo });
     return ok({ mensagem: ativo ? 'Acesso liberado.' : 'Acesso bloqueado.' });
+  },
+  definirExpiracao: async (id: string, meses: number | null) => {
+    const val = meses === null ? null : (() => {
+      const d = new Date(); d.setMonth(d.getMonth() + meses); return d.toISOString().split('T')[0];
+    })();
+    await updateDoc(doc(db, 'alunos', id), { dataExpiracao: val });
+    return ok({ dataExpiracao: val });
   },
   remover: async (id: string) => {
     await deleteDoc(doc(db, 'alunos', id));
@@ -472,6 +492,16 @@ export const consultasServico = {
   },
   buscar: async (id: string) => ok(snap2one(await getDoc(doc(db, 'consultas', id)))),
   criar: async (dados: any) => { const nutriId = await getNutriId(); const ref = await addDoc(collection(db, 'consultas'), { status: 'AGENDADA', ...dados, nutricionistaId: nutriId, criadoEm: ts() }); return ok({ id: ref.id, ...dados }); },
+  solicitarConsulta: async (dados: any) => {
+    const u = auth.currentUser; if (!u) throw new Error('Não autenticado.');
+    const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', u.email)));
+    if (alunoSnap.empty) throw new Error('Aluno não encontrado.');
+    const alunoDoc = alunoSnap.docs[0];
+    const alunoId = alunoDoc.id;
+    const nutricionistaId = (alunoDoc.data() as any).nutricionistaId;
+    const ref = await addDoc(collection(db, 'consultas'), { status: 'SOLICITADA', ...dados, alunoId, nutricionistaId, criadoEm: ts() });
+    return ok({ id: ref.id, alunoId, nutricionistaId, ...dados });
+  },
   atualizar: async (id: string, dados: any) => { await updateDoc(doc(db, 'consultas', id), dados); return ok({ id, ...dados }); },
   deletar: async (id: string) => { await deleteDoc(doc(db, 'consultas', id)); return ok({ mensagem: 'Removido.' }); },
 };
@@ -499,6 +529,14 @@ export const anamneseServico = {
   atualizarNotas: async (alunoId: string, notasNutricionista: string) => {
     await updateDoc(doc(db, 'anamneses', alunoId), { notasNutricionista });
     return ok({ mensagem: 'Notas atualizadas.' });
+  },
+  salvarPerguntasNutri: async (alunoId: string, perguntas: { id: string; pergunta: string }[]) => {
+    await updateDoc(doc(db, 'anamneses', alunoId), { perguntasNutricionista: perguntas });
+    return ok({ mensagem: 'Perguntas salvas.' });
+  },
+  salvarRespostasAluno: async (alunoId: string, respostas: Record<string, string>) => {
+    await updateDoc(doc(db, 'anamneses', alunoId), { respostasPerguntas: respostas, respostasPreenchidasEm: ts() });
+    return ok({ mensagem: 'Respostas salvas.' });
   },
 };
 
@@ -598,5 +636,18 @@ export const chatServico = {
   },
 };
 
+// ─── Treinos Realizados ──────────────────────────────────────────
+export const treinosRealizadosServico = {
+  listar: async (alunoId: string) => ok(snap2arr(await getDocs(
+    query(collection(db, 'treinos_realizados'), where('alunoId', '==', alunoId)),
+  ))),
+  criar: async (alunoId: string, fichaId: string, fichaNome: string) => {
+    const ref = await addDoc(collection(db, 'treinos_realizados'), {
+      alunoId, fichaId, fichaNome, realizadoEm: ts(),
+    });
+    return ok({ id: ref.id, alunoId, fichaId, fichaNome });
+  },
+};
+
 export { fbSignOut as signOut };
-export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico, anamneseServico, chatServico };
+export default { autenticacaoServico, nutricionistaServico, alunosServico, alimentosServico, tacoServico, exerciciosServico, planosServico, fichasServico, receitasServico, progressoServico, consultasServico, formulasServico, anamneseServico, chatServico, treinosRealizadosServico };

@@ -37,7 +37,7 @@ export function ProvedorAutenticacao({ children }: { children: ReactNode }) {
             const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', firebaseUser.email)));
             if (!alunoSnap.empty) {
               const d = alunoSnap.docs[0].data() as any;
-              setUsuario({ id: alunoSnap.docs[0].id, nome: d.nome, email: d.email, perfil: 'PACIENTE' });
+              setUsuario({ id: alunoSnap.docs[0].id, nome: d.nome, email: d.email, perfil: 'PACIENTE', nutricionistaId: d.nutricionistaId });
               setToken(tkn);
             } else {
               setUsuario(null); setToken(null);

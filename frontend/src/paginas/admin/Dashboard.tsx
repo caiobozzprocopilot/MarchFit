@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { nutricionistaServico } from '../../servicos/api';
-import { Users, UserCheck, Calendar, TrendingUp, ArrowRight, Loader2, Apple, Dumbbell, ChefHat, FlaskConical } from 'lucide-react';
+import { Users, UserCheck, Calendar, TrendingUp, ArrowRight, Loader2, Apple, Dumbbell, ChefHat, FlaskConical, AlertTriangle, Clock } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '../../contextos/autenticacao';
@@ -33,10 +33,10 @@ export default function DashboardAdmin() {
   });
 
   const cards = [
-    { label: 'Total de Pacientes', valor: dashboard?.totalAlunos ?? 0,               icone: Users,      fundo: 'bg-blue-950/60 border-blue-900/50',        cor: 'text-blue-400',    iconeFundo: 'bg-blue-900/50',    rota: '/admin/pacientes' },
-    { label: 'Pacientes Ativos',  valor: dashboard?.alunosAtivos ?? 0,              icone: UserCheck,  fundo: 'bg-teal-950/60 border-teal-900/50',        cor: 'text-teal-400',    iconeFundo: 'bg-teal-900/50',    rota: '/admin/pacientes' },
-    { label: 'Consultas Hoje',    valor: dashboard?.consultasHoje ?? 0,             icone: Calendar,   fundo: 'bg-indigo-950/60 border-indigo-900/50',    cor: 'text-indigo-400',  iconeFundo: 'bg-indigo-900/50',  rota: '/admin/consultas' },
-    { label: 'Pr\u00f3ximas 7 dias',   valor: dashboard?.proximasConsultas?.length ?? 0, icone: TrendingUp, fundo: 'bg-slate-800/60 border-slate-700/50',      cor: 'text-slate-400',   iconeFundo: 'bg-slate-700/50',   rota: '/admin/consultas' },
+    { label: 'Total de Pacientes', valor: dashboard?.totalAlunos ?? 0,               icone: Users,         fundo: 'bg-blue-950/60 border-blue-900/50',        cor: 'text-blue-400',    iconeFundo: 'bg-blue-900/50',    rota: '/admin/pacientes' },
+    { label: 'Pacientes Ativos',   valor: dashboard?.alunosAtivos ?? 0,              icone: UserCheck,     fundo: 'bg-teal-950/60 border-teal-900/50',        cor: 'text-teal-400',    iconeFundo: 'bg-teal-900/50',    rota: '/admin/pacientes' },
+    { label: 'Consultas Hoje',     valor: dashboard?.consultasHoje ?? 0,             icone: Calendar,      fundo: 'bg-indigo-950/60 border-indigo-900/50',    cor: 'text-indigo-400',  iconeFundo: 'bg-indigo-900/50',  rota: '/admin/consultas' },
+    { label: 'Próximas 7 dias',    valor: dashboard?.proximasConsultas?.length ?? 0, icone: TrendingUp,    fundo: 'bg-slate-800/60 border-slate-700/50',      cor: 'text-slate-400',   iconeFundo: 'bg-slate-700/50',   rota: '/admin/consultas' },
   ];
 
   return (
@@ -77,6 +77,64 @@ export default function DashboardAdmin() {
               );
             })}
           </div>
+
+          {/* Cards de alertas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              onClick={() => navigate('/admin/pacientes')}
+              className="bg-amber-950/40 border border-amber-900/40 p-5 rounded-2xl hover:brightness-110 transition-all duration-200 text-left flex items-center gap-4"
+            >
+              <div className="inline-flex p-3 rounded-xl bg-amber-900/40 flex-shrink-0">
+                <Clock className="w-5 h-5 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-3xl font-black text-white">{dashboard?.expirando ?? 0}</p>
+                <p className="font-display uppercase tracking-wider text-xs mt-0.5 text-amber-400 opacity-80">Expirando em 30 dias</p>
+              </div>
+            </button>
+            <button
+              onClick={() => navigate('/admin/pacientes')}
+              className="bg-red-950/40 border border-red-900/40 p-5 rounded-2xl hover:brightness-110 transition-all duration-200 text-left flex items-center gap-4"
+            >
+              <div className="inline-flex p-3 rounded-xl bg-red-900/40 flex-shrink-0">
+                <AlertTriangle className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <p className="text-3xl font-black text-white">{dashboard?.expirados ?? 0}</p>
+                <p className="font-display uppercase tracking-wider text-xs mt-0.5 text-red-400 opacity-80">Planos Expirados</p>
+              </div>
+            </button>
+          </div>
+
+          {/* Distribuição de pacientes */}
+          {dashboard && (
+            <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">
+              <h2 className="font-display uppercase tracking-wider text-white mb-5 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-400" /> Distribuição de Pacientes
+              </h2>
+              <div className="space-y-3">
+                {[
+                  { label: 'Ativos e em dia',  count: Math.max(0, (dashboard.alunosAtivos ?? 0) - (dashboard.expirando ?? 0)), cor: 'bg-emerald-500', textCor: 'text-emerald-400' },
+                  { label: 'Expirando (30d)',   count: dashboard.expirando ?? 0,                                                cor: 'bg-amber-500',  textCor: 'text-amber-400'  },
+                  { label: 'Plano expirado',    count: dashboard.expirados ?? 0,                                                cor: 'bg-red-500',    textCor: 'text-red-400'    },
+                  { label: 'Inativos',          count: Math.max(0, (dashboard.totalAlunos ?? 0) - (dashboard.alunosAtivos ?? 0)), cor: 'bg-gray-600', textCor: 'text-gray-500'  },
+                ].map(({ label, count, cor, textCor }) => (
+                  <div key={label}>
+                    <div className="flex justify-between text-xs mb-1.5">
+                      <span className="text-gray-400">{label}</span>
+                      <span className={`font-bold ${textCor}`}>{count}</span>
+                    </div>
+                    <div className="w-full bg-gray-800 rounded-full h-2">
+                      <div
+                        className={`h-2 rounded-full ${cor} transition-all duration-700`}
+                        style={{ width: (dashboard.totalAlunos ?? 0) > 0 ? `${Math.round((count / dashboard.totalAlunos) * 100)}%` : '0%' }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Próximas consultas */}
           <div className="bg-gray-900 rounded-2xl border border-gray-800 p-6">

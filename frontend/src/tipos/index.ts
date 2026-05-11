@@ -28,6 +28,7 @@ export interface Aluno {
   objetivos?: string;
   observacoes?: string;
   ativo: boolean;
+  dataExpiracao?: string;
   criadoEm: string;
   nutricionistaId: string;
   _count?: {
@@ -288,6 +289,7 @@ export interface UsuarioAutenticado {
   email: string;
   perfil: TipoPerfil;
   crn?: string;
+  nutricionistaId?: string;
 }
 
 export interface RespostaLogin {

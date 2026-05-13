@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { anamneseServico } from '../servicos/api';
-import { ClipboardList, ChevronRight, ChevronLeft, Check, Loader2 } from 'lucide-react';
+import { ClipboardList, ChevronRight, ChevronLeft, Check, Loader2, LogOut } from 'lucide-react';
 
 type FormAnamnese = {
   dataNascimento: string;
@@ -157,10 +157,12 @@ export default function AnamneseModal({
   alunoId,
   onComplete,
   onSkip,
+  onLogout,
 }: {
   alunoId: string;
   onComplete: () => void;
   onSkip: () => void;
+  onLogout?: () => void;
 }) {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<FormAnamnese>(INITIAL);
@@ -194,7 +196,16 @@ export default function AnamneseModal({
         <div className="max-w-lg mx-auto w-full px-4 py-8 flex-1 flex flex-col">
 
           {/* ── Header ── */}
-          <div className="text-center mb-6">
+          <div className="relative text-center mb-6">
+            {onLogout && (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="absolute right-0 top-0 flex items-center gap-1.5 text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-500/10"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sair
+              </button>
+            )}
             <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25">
               <ClipboardList className="w-7 h-7 text-white" />
             </div>

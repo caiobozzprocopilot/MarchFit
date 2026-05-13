@@ -260,6 +260,15 @@ export const alunosServico = {
     await deleteDoc(doc(db, 'alunos', id));
     return ok({ mensagem: 'Aluno removido.' });
   },
+  listarPendentes: async () => {
+    const snap = await getDocs(query(collection(db, 'alunos'), where('pendente', '==', true)));
+    return ok(snap2arr(snap));
+  },
+  aprovarAluno: async (id: string) => {
+    const nutriId = await getNutriId();
+    await updateDoc(doc(db, 'alunos', id), { ativo: true, pendente: false, nutricionistaId: nutriId });
+    return ok({ mensagem: 'Aluno aprovado.' });
+  },
   atualizarFoto: async (id: string, formData: FormData) => {
     const file = formData.get('foto') as File;
     const base64 = await file2base64(file);

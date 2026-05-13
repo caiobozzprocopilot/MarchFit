@@ -31,6 +31,7 @@ export interface Aluno {
   dataExpiracao?: string;
   criadoEm: string;
   nutricionistaId: string;
+  pendente?: boolean;
   _count?: {
     planosAlimentares: number;
     fichasTreino: number;
@@ -290,6 +291,7 @@ export interface UsuarioAutenticado {
   perfil: TipoPerfil;
   crn?: string;
   nutricionistaId?: string;
+  pendente?: boolean;
 }
 
 export interface RespostaLogin {

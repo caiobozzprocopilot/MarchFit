@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { alunosServico } from '../../servicos/api';
-import { Search, Plus, ChevronRight, Loader2, X, Lock, Unlock, Trash2, AlertTriangle, Filter } from 'lucide-react';
+import { Search, Plus, ChevronRight, Loader2, X, Lock, Unlock, Trash2, AlertTriangle, Filter, UserCheck } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import type { Aluno } from '../../tipos';
 
@@ -68,6 +68,19 @@ export default function Alunos() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['alunos'] });
       setAlunoParaDeletar(null);
+    },
+  });
+
+  const { data: alunosPendentes = [] } = useQuery<Aluno[]>({
+    queryKey: ['alunos-pendentes'],
+    queryFn: () => alunosServico.listarPendentes().then((r) => r.data),
+  });
+
+  const mutAprovar = useMutation({
+    mutationFn: (id: string) => alunosServico.aprovarAluno(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['alunos'] });
+      queryClient.invalidateQueries({ queryKey: ['alunos-pendentes'] });
     },
   });
 
@@ -137,6 +150,54 @@ export default function Alunos() {
           <Plus className="w-4 h-4" /> Novo Paciente
         </button>
       </div>
+
+      {/* Solicitações via Google */}
+      {alunosPendentes.length > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-amber-500/20">
+            <UserCheck className="w-4 h-4 text-amber-400" />
+            <span className="text-sm font-bold text-amber-400">Solicitações de acesso ({alunosPendentes.length})</span>
+          </div>
+          {alunosPendentes.map((aluno, i) => (
+            <div
+              key={aluno.id}
+              className={`flex items-center justify-between px-5 py-3.5 ${i !== alunosPendentes.length - 1 ? 'border-b border-amber-500/10' : ''}`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                {aluno.fotoPerfil ? (
+                  <img src={`data:image/jpeg;base64,${aluno.fotoPerfil}`} alt={aluno.nome} className="w-9 h-9 rounded-full object-cover" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-amber-500/15 flex items-center justify-center text-amber-400 font-bold text-sm border border-amber-500/20">
+                    {aluno.nome.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{aluno.nome}</p>
+                  <p className="text-xs text-gray-500 truncate">{aluno.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 ml-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => mutAprovar.mutate(aluno.id)}
+                  disabled={mutAprovar.isPending}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {mutAprovar.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UserCheck className="w-3.5 h-3.5" />}
+                  Aprovar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAlunoParaDeletar({ id: aluno.id, nome: aluno.nome })}
+                  className="p-1.5 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-400/10 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Busca */}
       <div className="relative">

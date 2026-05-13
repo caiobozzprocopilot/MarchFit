@@ -31,8 +31,21 @@ export default function LayoutAluno() {
   const navigate = useNavigate();
 
   const alunoId = usuario?.id;
-  const [skippedThisSession, setSkippedThisSession] = useState(false);
-  const [skippedPerguntas, setSkippedPerguntas] = useState(false);
+  const [skippedThisSession, setSkippedThisSession] = useState(
+    () => sessionStorage.getItem(`anamnese-skipped-${usuario?.id}`) === '1'
+  );
+  const [skippedPerguntas, setSkippedPerguntas] = useState(
+    () => sessionStorage.getItem(`perguntas-skipped-${usuario?.id}`) === '1'
+  );
+
+  const handleSkipAnamnese = () => {
+    sessionStorage.setItem(`anamnese-skipped-${alunoId}`, '1');
+    setSkippedThisSession(true);
+  };
+  const handleSkipPerguntas = () => {
+    sessionStorage.setItem(`perguntas-skipped-${alunoId}`, '1');
+    setSkippedPerguntas(true);
+  };
 
   const { data: anamneseCheck, isLoading: loadingAnamneseCheck } = useQuery({
     queryKey: ['anamnese', alunoId],
@@ -57,6 +70,25 @@ export default function LayoutAluno() {
     !showAnamnese;
 
   const handleLogout = () => { logout(); navigate('/login'); };
+
+  // Pending approval screen
+  if (usuario?.pendente) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6 text-center">
+        <LogoMarchFit className="w-16 h-16 rounded-2xl mb-6" />
+        <h1 className="text-xl font-black text-white mb-2">Aguardando aprovação</h1>
+        <p className="text-gray-400 text-sm max-w-xs mb-6">
+          Sua conta foi criada. O nutricionista precisa aprovar seu acesso antes de você usar o app.
+        </p>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-gray-500 hover:text-red-400 transition-colors flex items-center gap-1.5"
+        >
+          <LogOut className="w-4 h-4" /> Sair
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-950">
@@ -125,7 +157,8 @@ export default function LayoutAluno() {
         <AnamneseModal
           alunoId={alunoId!}
           onComplete={() => {}}
-          onSkip={() => setSkippedThisSession(true)}
+          onSkip={handleSkipAnamnese}
+          onLogout={handleLogout}
         />
       )}
 
@@ -134,8 +167,8 @@ export default function LayoutAluno() {
           alunoId={alunoId!}
           perguntas={perguntasNutri}
           respostasExistentes={respostasExistentes}
-          onComplete={() => setSkippedPerguntas(true)}
-          onSkip={() => setSkippedPerguntas(true)}
+          onComplete={handleSkipPerguntas}
+          onSkip={handleSkipPerguntas}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, query, where, setDoc, doc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { UsuarioAutenticado, TipoPerfil } from '../tipos';
 
@@ -34,13 +34,31 @@ export function ProvedorAutenticacao({ children }: { children: ReactNode }) {
             setUsuario({ id: nutriSnap.docs[0].id, nome: d.nome, email: d.email, perfil: 'NUTRICIONISTA', crn: d.crn });
             setToken(tkn);
           } else {
-            const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', firebaseUser.email)));
+            const normalizedEmail = (firebaseUser.email || '').toLowerCase().trim();
+            const alunoSnap = await getDocs(query(collection(db, 'alunos'), where('email', '==', normalizedEmail)));
             if (!alunoSnap.empty) {
               const d = alunoSnap.docs[0].data() as any;
-              setUsuario({ id: alunoSnap.docs[0].id, nome: d.nome, email: d.email, perfil: 'PACIENTE', nutricionistaId: d.nutricionistaId });
+              setUsuario({ id: alunoSnap.docs[0].id, nome: d.nome, email: d.email, perfil: 'PACIENTE', nutricionistaId: d.nutricionistaId, pendente: d.pendente ?? false });
               setToken(tkn);
             } else {
-              setUsuario(null); setToken(null);
+              const isGoogleSignIn = firebaseUser.providerData.some((p) => p.providerId === 'google.com');
+              if (isGoogleSignIn) {
+                const novoAluno = {
+                  nome: firebaseUser.displayName || normalizedEmail.split('@')[0] || 'Usuário',
+                  email: normalizedEmail,
+                  fotoPerfil: firebaseUser.photoURL || null,
+                  ativo: false,
+                  pendente: true,
+                  nutricionistaId: '',
+                  origem: 'google',
+                  criadoEm: new Date().toISOString(),
+                };
+                await setDoc(doc(db, 'alunos', firebaseUser.uid), novoAluno);
+                setUsuario({ id: firebaseUser.uid, nome: novoAluno.nome, email: novoAluno.email, perfil: 'PACIENTE', nutricionistaId: '', pendente: true });
+                setToken(tkn);
+              } else {
+                setUsuario(null); setToken(null);
+              }
             }
           }
         } catch (err: any) {

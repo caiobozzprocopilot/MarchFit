@@ -2,34 +2,86 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
 import { receitasServico } from '../../servicos/api';
-import { Loader2, Youtube, X, Clock, ChefHat, Heart } from 'lucide-react';
+import { Loader2, Youtube, X, Clock, ChefHat, Heart, UtensilsCrossed, BookOpen, Users } from 'lucide-react';
 import type { Receita } from '../../tipos';
 
-function ModalVideo({ receita, onFechar }: { receita: Receita; onFechar: () => void }) {
+function ModalReceita({ receita, onFechar }: { receita: Receita; onFechar: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={onFechar}>
-      <div className="w-full max-w-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-white font-semibold">{receita.nome}</h2>
-          <button onClick={onFechar} className="text-white/70 hover:text-white">
-            <X className="w-6 h-6" />
+      <div
+        className="w-full max-w-2xl bg-gray-950 border border-gray-800 rounded-2xl overflow-y-auto max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between p-5 border-b border-gray-800">
+          <div>
+            <h2 className="text-white font-bold text-lg leading-tight">{receita.nome}</h2>
+            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+              {receita.tempoPreparo && (
+                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {receita.tempoPreparo} min</span>
+              )}
+              {receita.porcoes && (
+                <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {receita.porcoes} porção(ões)</span>
+              )}
+              {receita.categoria && (
+                <span className="bg-gray-800 text-gray-400 px-2 py-0.5 rounded-full">{receita.categoria}</span>
+              )}
+            </div>
+          </div>
+          <button onClick={onFechar} className="text-gray-500 hover:text-white ml-4 flex-shrink-0 mt-0.5">
+            <X className="w-5 h-5" />
           </button>
         </div>
-        {receita.youtubeVideoId ? (
-          <div className="relative pt-[56.25%] bg-black rounded-xl overflow-hidden">
-            <iframe
-              className="absolute inset-0 w-full h-full"
-              src={`https://www.youtube.com/embed/${receita.youtubeVideoId}?autoplay=1`}
-              allow="autoplay; encrypted-media"
-              allowFullScreen
-              title={receita.nome}
-            />
-          </div>
-        ) : (
-          <div className="bg-gray-900 rounded-xl flex items-center justify-center h-64">
-            <p className="text-gray-400">Vídeo não disponível</p>
-          </div>
-        )}
+
+        <div className="p-5 space-y-5">
+          {/* Vídeo */}
+          {receita.youtubeVideoId ? (
+            <div className="relative pt-[56.25%] bg-black rounded-xl overflow-hidden">
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube.com/embed/${receita.youtubeVideoId}?autoplay=1`}
+                allow="autoplay; encrypted-media"
+                allowFullScreen
+                title={receita.nome}
+              />
+            </div>
+          ) : null}
+
+          {/* Descrição */}
+          {receita.descricao && (
+            <p className="text-gray-300 text-sm leading-relaxed">{receita.descricao}</p>
+          )}
+
+          {/* Ingredientes */}
+          {receita.ingredientes && (
+            <div>
+              <h3 className="flex items-center gap-2 text-emerald-400 font-display uppercase tracking-wider text-xs mb-2">
+                <UtensilsCrossed className="w-3.5 h-3.5" /> Ingredientes
+              </h3>
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                <p className="text-gray-300 text-sm whitespace-pre-line leading-relaxed">{receita.ingredientes}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Modo de preparo */}
+          {receita.modoPreparo && (
+            <div>
+              <h3 className="flex items-center gap-2 text-emerald-400 font-display uppercase tracking-wider text-xs mb-2">
+                <BookOpen className="w-3.5 h-3.5" /> Modo de preparo
+              </h3>
+              <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
+                <p className="text-gray-300 text-sm whitespace-pre-line leading-relaxed">{receita.modoPreparo}</p>
+              </div>
+            </div>
+          )}
+
+          {!receita.youtubeVideoId && !receita.descricao && !receita.ingredientes && !receita.modoPreparo && (
+            <div className="flex items-center justify-center h-32 text-gray-600">
+              <p className="text-sm">Nenhum detalhe disponível</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -73,11 +125,19 @@ function CardReceita({ receita, aoClicar, favorita, onToggleFavorita }: { receit
           </button>
         </div>
 
+        {receita.descricao && (
+          <p className="text-xs text-gray-500 line-clamp-2 mb-2">{receita.descricao}</p>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-xs text-gray-500">
             {receita.tempoPreparo && (
               <span className="flex items-center gap-1">
-                <Clock className="w-3.5 h-3.5" /> {receita.tempoPreparo} min
+                <Clock className="w-3.5 h-3.5" /> {receita.tempoPreparo} min</span>
+            )}
+            {(receita.ingredientes || receita.modoPreparo) && (
+              <span className="flex items-center gap-1 text-emerald-600">
+                <BookOpen className="w-3.5 h-3.5" /> receita completa
               </span>
             )}
           </div>
@@ -200,7 +260,7 @@ export default function MinhasReceitas() {
       )}
 
       {receitaAberta && (
-        <ModalVideo receita={receitaAberta} onFechar={() => setReceitaAberta(null)} />
+        <ModalReceita receita={receitaAberta} onFechar={() => setReceitaAberta(null)} />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { exerciciosServico } from '../../servicos/api';
-import { Search, Plus, X, Loader2, Trash2, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Plus, X, Loader2, Trash2, Dumbbell, ChevronLeft, ChevronRight, Pencil } from 'lucide-react';
 import type { Exercicio } from '../../tipos';
 
 const POR_PAGINA = 20;
@@ -70,6 +70,8 @@ export default function Exercicios() {
   const [pagina, setPagina] = useState(1);
   const [mostrarModal, setMostrarModal] = useState(false);
   const [form, setForm] = useState<FormExercicio>(formVazio);
+  const [exEdit, setExEdit] = useState<Exercicio | null>(null);
+  const [confirmDelId, setConfirmDelId] = useState<string | null>(null);
 
   const { data: exercicios = [], isLoading } = useQuery<Exercicio[]>({
     queryKey: ['exercicios'],
@@ -84,6 +86,11 @@ export default function Exercicios() {
   const mutDeletar = useMutation({
     mutationFn: (id: string) => exerciciosServico.deletar(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercicios'] }),
+  });
+
+  const mutAtualizar = useMutation({
+    mutationFn: ({ id, dados }: { id: string; dados: FormExercicio }) => exerciciosServico.atualizar(id, dados),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['exercicios'] }); setMostrarModal(false); setExEdit(null); setForm(formVazio); },
   });
 
   const filtrados = exercicios.filter((e) => {
@@ -151,7 +158,12 @@ export default function Exercicios() {
                   <span className={`px-2.5 py-1 rounded-full text-xs font-display uppercase tracking-wider whitespace-nowrap ${corNivel[e.nivel] ?? 'bg-gray-800 text-gray-500 border border-gray-700'}`}>
                     {e.nivel?.charAt(0) + e.nivel?.slice(1).toLowerCase()}
                   </span>
-                  <button onClick={() => { if (confirm('Excluir exercício?')) mutDeletar.mutate(e.id); }}
+                  <button
+                    onClick={() => { setForm({ nome: e.nome, grupoMuscular: e.grupoMuscular, nivel: e.nivel, descricao: e.descricao ?? '', equipamento: e.equipamento ?? '', urlVideo: (e as any).urlVideo ?? '' }); setExEdit(e); setMostrarModal(true); }}
+                    className="p-1.5 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all opacity-0 group-hover:opacity-100">
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button onClick={() => setConfirmDelId(e.id)}
                     className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -163,17 +175,17 @@ export default function Exercicios() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal criar/editar */}
       {mostrarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800">
-              <h2 className="font-bold text-white">Novo Exercício</h2>
-              <button onClick={() => setMostrarModal(false)} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 transition-colors">
+              <h2 className="font-bold text-white">{exEdit ? 'Editar Exercício' : 'Novo Exercício'}</h2>
+              <button onClick={() => { setMostrarModal(false); setExEdit(null); setForm(formVazio); }} className="p-1.5 rounded-lg hover:bg-gray-800 text-gray-500 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); mutCriar.mutate(form); }} className="p-6 space-y-4">
+            <form onSubmit={(e) => { e.preventDefault(); exEdit ? mutAtualizar.mutate({ id: exEdit.id, dados: form }) : mutCriar.mutate(form); }} className="p-6 space-y-4">
               <div>
                 <label className={labelCls}>Nome *</label>
                 <input value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required className={inputCls} autoFocus />
@@ -209,16 +221,45 @@ export default function Exercicios() {
                   placeholder="https://youtube.com/watch?v=..." className={inputCls} />
               </div>
               <div className="flex gap-3 pt-2">
-                <button type="button" onClick={() => setMostrarModal(false)}
+                <button type="button" onClick={() => { setMostrarModal(false); setExEdit(null); setForm(formVazio); }}
                   className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all">
                   Cancelar
                 </button>
-                <button type="submit" disabled={mutCriar.isPending}
+                <button type="submit" disabled={mutCriar.isPending || mutAtualizar.isPending}
                   className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-1.5 transition-all">
-                  {mutCriar.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Cadastrar
+                  {(mutCriar.isPending || mutAtualizar.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {exEdit ? 'Salvar alterações' : 'Cadastrar'}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirm modal */}
+      {confirmDelId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="font-bold text-white">Excluir exercício?</h3>
+              <p className="text-sm text-gray-400">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setConfirmDelId(null)}
+                className="flex-1 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 py-2.5 rounded-xl text-sm transition-all">
+                Cancelar
+              </button>
+              <button
+                onClick={() => { mutDeletar.mutate(confirmDelId); setConfirmDelId(null); }}
+                disabled={mutDeletar.isPending}
+                className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5">
+                {mutDeletar.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                Excluir
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useEffect, useRef } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contextos/autenticacao';
 import { alunosServico, autenticacaoServico } from '../../servicos/api';
-import { User, Phone, Mail, Lock, CheckCircle, Loader2, ArrowLeft } from 'lucide-react';
+import { User, Phone, Mail, Lock, CheckCircle, Loader2, ArrowLeft, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Aluno } from '../../tipos';
 
@@ -21,7 +21,9 @@ const maskTelefone = (v: string) => {
 export default function MeuPerfil() {
   const { usuario, token, login } = useAuth();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const alunoId = usuario?.id!;
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -44,11 +46,19 @@ export default function MeuPerfil() {
   const mutAtualizar = useMutation({
     mutationFn: () => alunosServico.atualizar(alunoId, { nome, telefone }),
     onSuccess: () => {
-      // Update the auth context immediately so the header name refreshes
       login(token!, { ...usuario!, nome });
       setSalvo(true);
       setTimeout(() => setSalvo(false), 3000);
     },
+  });
+
+  const mutFoto = useMutation({
+    mutationFn: (file: File) => {
+      const fd = new FormData();
+      fd.append('foto', file);
+      return alunosServico.atualizarFoto(alunoId, fd);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['aluno-meu-perfil', alunoId] }),
   });
 
   const mutSenha = useMutation({
@@ -82,12 +92,44 @@ export default function MeuPerfil() {
 
       {/* Avatar */}
       <div className="flex items-center gap-4 bg-gray-900 border border-gray-800 rounded-2xl p-5">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/20">
-          <span className="text-white font-black text-2xl">{nome?.[0]?.toUpperCase() ?? '?'}</span>
+        <div className="relative flex-shrink-0">
+          {(aluno as any)?.fotoPerfil ? (
+            <img
+              src={(aluno as any).fotoPerfil}
+              alt={nome}
+              className="w-16 h-16 rounded-2xl object-cover shadow-lg"
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <span className="text-white font-black text-2xl">{nome?.[0]?.toUpperCase() ?? '?'}</span>
+            </div>
+          )}
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={mutFoto.isPending}
+            className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-emerald-500 hover:bg-emerald-400 border-2 border-gray-900 flex items-center justify-center transition-colors"
+            title="Alterar foto"
+          >
+            {mutFoto.isPending
+              ? <Loader2 className="w-3 h-3 text-white animate-spin" />
+              : <Camera className="w-3 h-3 text-white" />}
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) mutFoto.mutate(file);
+              e.target.value = '';
+            }}
+          />
         </div>
         <div>
           <p className="font-bold text-white text-lg leading-tight">{nome || '—'}</p>
           <p className="text-gray-500 text-sm">{usuario?.email}</p>
+          <p className="text-xs text-gray-600 mt-1">Toque na câmera para alterar a foto</p>
         </div>
       </div>
 

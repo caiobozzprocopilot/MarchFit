@@ -316,56 +316,68 @@ function BuscaReceita({
 }
 
 // ── Food Search Panel ─────────────────────────────────────────────
+type CarrinhoItem = { alimento: TacoAlimento; qtd: string };
+type BulkItem = { alimento: TacoAlimento | null; customNome: string; customKcal: number; qty: number };
+
 function BuscaAlimento({
-  onAdicionar,
+  onAdicionarVarios,
   onFechar,
   adicionando,
 }: {
-  onAdicionar: (a: TacoAlimento | null, customNome: string, customKcal: number, qty: number) => void;
+  onAdicionarVarios: (itens: BulkItem[]) => void;
   onFechar: () => void;
   adicionando: boolean;
 }) {
   const [busca, setBusca] = useState('');
   const [catFiltro, setCatFiltro] = useState('');
-  const [alimentoSel, setAlimentoSel] = useState<TacoAlimento | null>(null);
   const [modoCustom, setModoCustom] = useState(false);
-  const [qtd, setQtd] = useState('100');
+  const [carrinho, setCarrinho] = useState<CarrinhoItem[]>([]);
   const [customNome, setCustomNome] = useState('');
   const [customKcal, setCustomKcal] = useState('');
+  const [customQtd, setCustomQtd] = useState('100');
 
   const tacoFiltrado = useMemo(() => {
     let lista = tacoAlimentos;
     if (catFiltro) lista = lista.filter((a) => a.categoria === catFiltro);
     if (busca.trim()) {
       const t = busca.toLowerCase();
-      lista = lista.filter(
-        (a) => a.nome.toLowerCase().includes(t) || a.categoria.toLowerCase().includes(t),
-      );
+      lista = lista.filter((a) => a.nome.toLowerCase().includes(t) || a.categoria.toLowerCase().includes(t));
     }
-    return lista.slice(0, 8);
+    return lista.slice(0, 15);
   }, [busca, catFiltro]);
 
-  const previewKcal = alimentoSel
-    ? r1(alimentoSel.caloriasP100g * (Number(qtd) || 0) / 100)
-    : 0;
+  const adicionarAoCarrinho = (a: TacoAlimento) => {
+    setCarrinho((prev) => prev.some((i) => i.alimento.tacoId === a.tacoId) ? prev : [...prev, { alimento: a, qtd: '100' }]);
+  };
+  const removerDoCarrinho = (tacoId: string) => setCarrinho((prev) => prev.filter((i) => i.alimento.tacoId !== tacoId));
+  const atualizarQtd = (tacoId: string, qtd: string) => setCarrinho((prev) => prev.map((i) => i.alimento.tacoId === tacoId ? { ...i, qtd } : i));
 
-  const podeAdicionar = modoCustom
-    ? customNome.trim() && Number(qtd) > 0
-    : alimentoSel && Number(qtd) > 0;
+  const totalKcal = carrinho.reduce((acc, i) => acc + i.alimento.caloriasP100g * (Number(i.qtd) || 0) / 100, 0);
+  const totalProt = carrinho.reduce((acc, i) => acc + i.alimento.proteinasP100g * (Number(i.qtd) || 0) / 100, 0);
+
+  const podeConfirmar = modoCustom
+    ? customNome.trim() && Number(customQtd) > 0
+    : carrinho.length > 0 && carrinho.every((i) => Number(i.qtd) > 0);
+
+  const confirmar = () => {
+    if (modoCustom) {
+      if (!customNome.trim() || !(Number(customQtd) > 0)) return;
+      onAdicionarVarios([{ alimento: null, customNome, customKcal: Number(customKcal) || 0, qty: Number(customQtd) }]);
+    } else {
+      const itens = carrinho.filter((i) => Number(i.qtd) > 0).map((i) => ({ alimento: i.alimento, customNome: '', customKcal: 0, qty: Number(i.qtd) }));
+      if (!itens.length) return;
+      onAdicionarVarios(itens);
+    }
+  };
 
   return (
     <div className="border-t border-gray-800 p-4 space-y-3">
+      {/* Tabs */}
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => { setModoCustom(false); setAlimentoSel(null); }}
-          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${!modoCustom ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
-        >
+        <button onClick={() => setModoCustom(false)} className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${!modoCustom ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}>
           Tabela TACO
         </button>
-        <button
-          onClick={() => { setModoCustom(true); setAlimentoSel(null); }}
-          className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${modoCustom ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}
-        >
+        <button onClick={() => setModoCustom(true)} className={`text-xs px-3 py-1.5 rounded-lg transition-colors ${modoCustom ? 'bg-emerald-500/20 text-emerald-400' : 'text-gray-500 hover:text-gray-300'}`}>
           Campo livre
         </button>
         <button onClick={onFechar} className="ml-auto p-1.5 text-gray-600 hover:text-white transition-colors rounded-lg hover:bg-gray-800">
@@ -375,6 +387,7 @@ function BuscaAlimento({
 
       {!modoCustom && (
         <>
+          {/* Search bar */}
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-600" />
@@ -383,39 +396,93 @@ function BuscaAlimento({
                 type="text"
                 placeholder="Buscar na tabela TACO..."
                 value={busca}
-                onChange={(e) => { setBusca(e.target.value); setAlimentoSel(null); }}
+                onChange={(e) => setBusca(e.target.value)}
                 className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2 pl-9 pr-3 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500"
               />
             </div>
-            <select
-              value={catFiltro}
-              onChange={(e) => setCatFiltro(e.target.value)}
-              className="bg-gray-800 border border-gray-700 rounded-xl py-2 px-2 text-xs text-gray-300 focus:outline-none focus:border-emerald-500 hidden sm:block"
-            >
+            <select value={catFiltro} onChange={(e) => setCatFiltro(e.target.value)}
+              className="bg-gray-800 border border-gray-700 rounded-xl py-2 px-2 text-xs text-gray-300 focus:outline-none focus:border-emerald-500 hidden sm:block">
               <option value="">Todas</option>
               {categoriasTaco.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
 
-          {!alimentoSel && busca.trim() && (
-            <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 max-h-48 overflow-y-auto">
+          {/* Results */}
+          {busca.trim() && (
+            <div className="bg-gray-800 rounded-xl overflow-hidden border border-gray-700 max-h-52 overflow-y-auto">
               {tacoFiltrado.length === 0 ? (
                 <p className="text-center py-4 text-xs text-gray-600">Nenhum resultado</p>
               ) : (
-                tacoFiltrado.map((a) => (
-                  <button
-                    key={a.tacoId}
-                    onClick={() => { setAlimentoSel(a); setQtd('100'); setBusca(a.nome); }}
-                    className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-700 transition-colors text-left border-b border-gray-700/50 last:border-0"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm text-white font-medium truncate">{a.nome}</p>
-                      <p className="text-xs text-gray-500 truncate">{a.categoria}</p>
-                    </div>
-                    <span className="text-xs text-yellow-400 flex-shrink-0 ml-3">{a.caloriasP100g} kcal/100g</span>
-                  </button>
-                ))
+                tacoFiltrado.map((a) => {
+                  const noCarrinho = carrinho.some((i) => i.alimento.tacoId === a.tacoId);
+                  return (
+                    <button key={a.tacoId} onClick={() => adicionarAoCarrinho(a)} disabled={noCarrinho}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 transition-colors text-left border-b border-gray-700/50 last:border-0 ${noCarrinho ? 'opacity-40 cursor-default' : 'hover:bg-gray-700'}`}>
+                      <div className="min-w-0">
+                        <p className="text-sm text-white font-medium truncate">{a.nome}</p>
+                        <p className="text-xs text-gray-500 truncate">{a.categoria}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                        <span className="text-xs text-yellow-400">{a.caloriasP100g} kcal/100g</span>
+                        {noCarrinho
+                          ? <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          : <Plus className="w-3.5 h-3.5 text-gray-500" />}
+                      </div>
+                    </button>
+                  );
+                })
               )}
+            </div>
+          )}
+
+          {/* Cart */}
+          {carrinho.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                Selecionados ({carrinho.length})
+              </p>
+              <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
+                {carrinho.map((item) => {
+                  const kcal = r1(item.alimento.caloriasP100g * (Number(item.qtd) || 0) / 100);
+                  const prot = r1(item.alimento.proteinasP100g * (Number(item.qtd) || 0) / 100);
+                  return (
+                    <div key={item.alimento.tacoId} className="flex items-center gap-2 bg-gray-800 rounded-xl px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white font-medium truncate">{item.alimento.nome}</p>
+                        <p className="text-[11px] text-gray-500">
+                          <span className="text-yellow-400">{kcal} kcal</span>
+                          <span className="mx-1">·</span>
+                          <span className="text-blue-400">{prot}g P</span>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <input
+                          type="number" min="1" value={item.qtd}
+                          onChange={(e) => atualizarQtd(item.alimento.tacoId, e.target.value)}
+                          className="w-16 bg-gray-700 border border-gray-600 rounded-lg py-1 px-2 text-xs text-white text-center focus:outline-none focus:border-emerald-500"
+                        />
+                        <span className="text-xs text-gray-500">g</span>
+                        <button onClick={() => removerDoCarrinho(item.alimento.tacoId)}
+                          className="p-1 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-between pt-0.5">
+                <p className="text-xs text-gray-500">
+                  Total: <span className="text-yellow-400 font-bold">{r1(totalKcal)} kcal</span>
+                  <span className="mx-1.5 text-gray-700">·</span>
+                  <span className="text-blue-400">{r1(totalProt)}g P</span>
+                </p>
+                <button onClick={confirmar} disabled={!podeConfirmar || adicionando}
+                  className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-40 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all">
+                  {adicionando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                  Adicionar {carrinho.length} item{carrinho.length > 1 ? 'ns' : ''}
+                </button>
+              </div>
             </div>
           )}
         </>
@@ -423,57 +490,19 @@ function BuscaAlimento({
 
       {modoCustom && (
         <div className="space-y-2">
-          <input
-            autoFocus
-            type="text"
-            placeholder="Nome do alimento (ex: Shake de proteína)"
-            value={customNome}
-            onChange={(e) => setCustomNome(e.target.value)}
-            className={inputCls}
-          />
-          <input
-            type="number"
-            placeholder="Calorias por 100g (pode deixar 0)"
-            value={customKcal}
-            onChange={(e) => setCustomKcal(e.target.value)}
-            className={inputCls}
-          />
-        </div>
-      )}
-
-      {(alimentoSel || modoCustom) && (
-        <div className="flex items-end gap-3">
-          <div className="w-32 flex-shrink-0">
-            <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">Quantidade (g)</label>
-            <input
-              type="number"
-              min="1"
-              value={qtd}
-              onChange={(e) => setQtd(e.target.value)}
-              className={inputCls}
-            />
-          </div>
-          {alimentoSel && (
-            <div className="flex-1 pb-0.5">
-              <p className="text-xs text-gray-600 mb-1">Preview</p>
-              <p className="text-sm">
-                <span className="text-yellow-400 font-bold">{previewKcal} kcal</span>
-                <span className="text-gray-600 mx-1.5">·</span>
-                <span className="text-blue-400">{r1(alimentoSel.proteinasP100g * (Number(qtd) || 0) / 100)}g P</span>
-              </p>
+          <input autoFocus type="text" placeholder="Nome do alimento (ex: Shake de proteína)"
+            value={customNome} onChange={(e) => setCustomNome(e.target.value)} className={inputCls} />
+          <div className="flex gap-2">
+            <input type="number" placeholder="Calorias por 100g (pode deixar 0)"
+              value={customKcal} onChange={(e) => setCustomKcal(e.target.value)} className={`${inputCls} flex-1`} />
+            <div className="relative w-28 flex-shrink-0">
+              <input type="number" min="1" placeholder="100"
+                value={customQtd} onChange={(e) => setCustomQtd(e.target.value)} className={inputCls} />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">g</span>
             </div>
-          )}
-          <button
-            onClick={() => {
-              if (modoCustom) {
-                onAdicionar(null, customNome, Number(customKcal) || 0, Number(qtd) || 100);
-              } else if (alimentoSel) {
-                onAdicionar(alimentoSel, '', 0, Number(qtd) || 100);
-              }
-            }}
-            disabled={!podeAdicionar || adicionando}
-            className="flex items-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all flex-shrink-0"
-          >
+          </div>
+          <button onClick={confirmar} disabled={!podeConfirmar || adicionando}
+            className="w-full flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 disabled:opacity-40 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all">
             {adicionando ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             Adicionar
           </button>
@@ -508,6 +537,8 @@ export default function EditorPlanoAlimentar({
   const [liquidoSaving, setLiquidoSaving] = useState(false);
   const [editandoHorario, setEditandoHorario] = useState<string | null>(null);
   const [horarioTemp, setHorarioTemp] = useState('');
+  const [confirmDelRf, setConfirmDelRf] = useState<RefeicaoLoaded | null>(null);
+  const [deleteMode, setDeleteMode] = useState<'refeicao' | 'alimentos'>('refeicao');
 
   const { data: refeicoes = [], isLoading } = useQuery<RefeicaoLoaded[]>({
     queryKey: ['editor', planoId],
@@ -581,7 +612,14 @@ export default function EditorPlanoAlimentar({
       await Promise.all(rf.itens.map((it) => planosServico.refeicoes.deletarItem(it.id)));
       await planosServico.refeicoes.deletar(planoId, rf.id);
     },
-    onSuccess: invalidar,
+    onSuccess: () => { invalidar(); setConfirmDelRf(null); },
+  });
+
+  const mutDelItens = useMutation({
+    mutationFn: async (rf: RefeicaoLoaded) => {
+      await Promise.all(rf.itens.map((it) => planosServico.refeicoes.deletarItem(it.id)));
+    },
+    onSuccess: () => { invalidar(); setConfirmDelRf(null); },
   });
 
   const mutToggleTreino = useMutation({
@@ -596,40 +634,39 @@ export default function EditorPlanoAlimentar({
     onSuccess: () => { invalidar(); setEditandoHorario(null); },
   });
 
-  const mutAddItem = useMutation({
-    mutationFn: ({
-      refeicaoId, opcaoIndex, alimento, customNome, customKcal, qty,
+  const mutAddItems = useMutation({
+    mutationFn: async ({
+      refeicaoId, opcaoIndex, itens,
     }: {
       refeicaoId: string;
       opcaoIndex: number;
-      alimento: TacoAlimento | null;
-      customNome: string;
-      customKcal: number;
-      qty: number;
+      itens: BulkItem[];
     }) => {
-      if (alimento) {
+      await Promise.all(itens.map(({ alimento, customNome, customKcal, qty }) => {
+        if (alimento) {
+          return planosServico.refeicoes.adicionarItem(planoId, refeicaoId, {
+            opcaoIndex,
+            tacoId: alimento.tacoId,
+            nome: alimento.nome,
+            quantidade: qty,
+            caloriasP100g: alimento.caloriasP100g,
+            proteinasP100g: alimento.proteinasP100g,
+            carboidratosP100g: alimento.carboidratosP100g,
+            gordurasP100g: alimento.gordurasP100g,
+            fibrasP100g: alimento.fibrasP100g ?? null,
+          });
+        }
         return planosServico.refeicoes.adicionarItem(planoId, refeicaoId, {
           opcaoIndex,
-          tacoId: alimento.tacoId,
-          nome: alimento.nome,
+          nome: customNome,
           quantidade: qty,
-          caloriasP100g: alimento.caloriasP100g,
-          proteinasP100g: alimento.proteinasP100g,
-          carboidratosP100g: alimento.carboidratosP100g,
-          gordurasP100g: alimento.gordurasP100g,
-          fibrasP100g: alimento.fibrasP100g ?? null,
+          caloriasP100g: customKcal,
+          proteinasP100g: 0,
+          carboidratosP100g: 0,
+          gordurasP100g: 0,
+          fibrasP100g: null,
         });
-      }
-      return planosServico.refeicoes.adicionarItem(planoId, refeicaoId, {
-        opcaoIndex,
-        nome: customNome,
-        quantidade: qty,
-        caloriasP100g: customKcal,
-        proteinasP100g: 0,
-        carboidratosP100g: 0,
-        gordurasP100g: 0,
-        fibrasP100g: null,
-      });
+      }));
     },
     onSuccess: () => {
       invalidar();
@@ -725,6 +762,88 @@ export default function EditorPlanoAlimentar({
 
   return (
     <div className="space-y-4">
+      {/* ── Confirm delete refeição modal ── */}
+      {confirmDelRf && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDelRf(null)}>
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative bg-gray-900 border border-red-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-5">
+              <div className="p-2.5 rounded-xl bg-red-500/10">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Excluir &ldquo;{confirmDelRf.nome}&rdquo;</h3>
+                <p className="text-xs text-gray-500">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="space-y-2 mb-5">
+              <button
+                onClick={() => setDeleteMode('alimentos')}
+                className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-colors ${
+                  deleteMode === 'alimentos'
+                    ? 'border-orange-500/50 bg-orange-500/10'
+                    : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                }`}
+              >
+                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  deleteMode === 'alimentos' ? 'border-orange-400' : 'border-gray-600'
+                }`}>
+                  {deleteMode === 'alimentos' && <div className="w-2 h-2 rounded-full bg-orange-400" />}
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold ${deleteMode === 'alimentos' ? 'text-orange-300' : 'text-gray-300'}`}>Limpar alimentos</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Remove todos os alimentos, mas mantém a refeição</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setDeleteMode('refeicao')}
+                className={`w-full flex items-start gap-3 p-3.5 rounded-xl border text-left transition-colors ${
+                  deleteMode === 'refeicao'
+                    ? 'border-red-500/50 bg-red-500/10'
+                    : 'border-gray-700 bg-gray-800 hover:border-gray-600'
+                }`}
+              >
+                <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  deleteMode === 'refeicao' ? 'border-red-400' : 'border-gray-600'
+                }`}>
+                  {deleteMode === 'refeicao' && <div className="w-2 h-2 rounded-full bg-red-400" />}
+                </div>
+                <div>
+                  <p className={`text-sm font-semibold ${deleteMode === 'refeicao' ? 'text-red-300' : 'text-gray-300'}`}>Excluir refeição</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Remove a refeição e todos os seus alimentos</p>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelRf(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-gray-400 bg-gray-800 hover:bg-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  if (deleteMode === 'refeicao') mutDelRf.mutate(confirmDelRf);
+                  else mutDelItens.mutate(confirmDelRf);
+                }}
+                disabled={mutDelRf.isPending || mutDelItens.isPending}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition-colors flex items-center justify-center gap-2 ${
+                  deleteMode === 'refeicao' ? 'bg-red-500 hover:bg-red-600' : 'bg-orange-500 hover:bg-orange-600'
+                }`}
+              >
+                {(mutDelRf.isPending || mutDelItens.isPending)
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : <Trash2 className="w-4 h-4" />}
+                {deleteMode === 'refeicao' ? 'Excluir refeição' : 'Limpar alimentos'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* ── Header ── */}
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
@@ -896,7 +1015,7 @@ export default function EditorPlanoAlimentar({
                   <span className="text-xs font-bold">PÓS</span>
                 </button>
                 <button
-                  onClick={() => { if (confirm(`Excluir "${rf.nome}"?`)) mutDelRf.mutate(rf); }}
+                  onClick={() => { setDeleteMode('refeicao'); setConfirmDelRf(rf); }}
                   className="p-1.5 rounded-lg text-gray-700 hover:text-red-400 hover:bg-red-500/10 transition-all"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -976,18 +1095,15 @@ export default function EditorPlanoAlimentar({
                 {/* Food search, recipe, or add buttons */}
                 {isAdding ? (
                   <BuscaAlimento
-                    onAdicionar={(alimento, customNome, customKcal, qty) =>
-                      mutAddItem.mutate({
+                    onAdicionarVarios={(itens) =>
+                      mutAddItems.mutate({
                         refeicaoId: rf.id,
                         opcaoIndex: adding!.opcaoIndex,
-                        alimento,
-                        customNome,
-                        customKcal,
-                        qty,
+                        itens,
                       })
                     }
                     onFechar={() => setAdding(null)}
-                    adicionando={mutAddItem.isPending}
+                    adicionando={mutAddItems.isPending}
                   />
                 ) : isAddingReceita ? (
                   <BuscaReceita

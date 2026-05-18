@@ -37,6 +37,9 @@ import {
   Printer,
   Eye,
   Images,
+  Pencil,
+  Search,
+  Check,
 } from 'lucide-react';
 import EditorPlanoAlimentar from './EditorPlanoAlimentar';
 import {
@@ -502,7 +505,8 @@ type ItemFicha = {
   ordem: number;
 };
 
-const formExInit = { exercicioId: '', exercicioNome: '', grupoMuscular: '', series: 3, repeticoes: '12', carga: '', observacoes: '' };
+type CarExercicio = { ex: Exercicio; series: number; reps: string; carga: string };
+const editItemFormInit = { series: 3, repeticoes: '12', carga: '', observacoes: '' };
 
 function AbaFichaTreino({ alunoId }: { alunoId: string }) {
   const queryClient = useQueryClient();
@@ -512,11 +516,15 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
   const [novoNome, setNovoNome] = useState('');
   const [fichaAberta, setFichaAberta] = useState<FichaTreino | null>(null);
   const [historicoTreinosAberto, setHistoricoTreinosAberto] = useState(false);
+  const [confirmDelFichaId, setConfirmDelFichaId] = useState<string | null>(null);
 
   // ── Level 2 state ──────────────────────────────────────────────
-  const [mostrarModalAdd, setMostrarModalAdd] = useState(false);
-  const [buscaEx, setBuscaEx] = useState('');
-  const [formEx, setFormEx] = useState(formExInit);
+  const [painelAberto, setPainelAberto] = useState(false);
+  const [buscaExPainel, setBuscaExPainel] = useState('');
+  const [carrinho, setCarrinho] = useState<CarExercicio[]>([]);
+  const [editandoItemId, setEditandoItemId] = useState<string | null>(null);
+  const [editItemForm, setEditItemForm] = useState(editItemFormInit);
+  const [confirmDelItemId, setConfirmDelItemId] = useState<string | null>(null);
 
   // ── Queries ────────────────────────────────────────────────────
   const { data: fichas = [], isLoading } = useQuery<FichaTreino[]>({
@@ -538,7 +546,7 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
   const { data: banco = [] } = useQuery<Exercicio[]>({
     queryKey: ['exercicios'],
     queryFn: () => exerciciosServico.listar().then((r) => r.data),
-    enabled: mostrarModalAdd,
+    enabled: !!fichaAberta,
   });
 
   // ── Mutations ──────────────────────────────────────────────────
@@ -559,23 +567,29 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
     },
   });
 
-  const mutAddEx = useMutation({
-    mutationFn: () =>
-      fichasServico.exercicios.adicionar(fichaAberta!.id, {
-        exercicioId: formEx.exercicioId,
-        exercicioNome: formEx.exercicioNome,
-        grupoMuscular: formEx.grupoMuscular,
-        series: formEx.series,
-        repeticoes: formEx.repeticoes,
-        carga: formEx.carga || null,
-        observacoes: formEx.observacoes || null,
-        ordem: itens.length,
-      }),
+  const mutAddVarios = useMutation({
+    mutationFn: async (itensCart: CarExercicio[]) => {
+      const base = itens.length;
+      await Promise.all(
+        itensCart.map((item, i) =>
+          fichasServico.exercicios.adicionar(fichaAberta!.id, {
+            exercicioId: item.ex.id,
+            exercicioNome: item.ex.nome,
+            grupoMuscular: item.ex.grupoMuscular ?? '',
+            series: item.series,
+            repeticoes: item.reps,
+            carga: item.carga || null,
+            observacoes: null,
+            ordem: base + i,
+          }),
+        ),
+      );
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exercicios-ficha', fichaAberta?.id] });
-      setMostrarModalAdd(false);
-      setFormEx(formExInit);
-      setBuscaEx('');
+      setCarrinho([]);
+      setPainelAberto(false);
+      setBuscaExPainel('');
     },
   });
 
@@ -584,24 +598,28 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['exercicios-ficha', fichaAberta?.id] }),
   });
 
-  const closeAddModal = () => { setMostrarModalAdd(false); setFormEx(formExInit); setBuscaEx(''); };
-  const bancFiltrado = banco.filter((e) =>
-    !buscaEx || e.nome.toLowerCase().includes(buscaEx.toLowerCase()) || (e.grupoMuscular ?? '').toLowerCase().includes(buscaEx.toLowerCase()),
-  );
-
-  if (isLoading) return <div className="flex justify-center pt-10"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>;
+  const mutAtualizarItem = useMutation({
+    mutationFn: ({ itemId, dados }: { itemId: string; dados: typeof editItemFormInit }) =>
+      fichasServico.exercicios.atualizar(fichaAberta!.id, itemId, dados),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exercicios-ficha', fichaAberta?.id] });
+      setEditandoItemId(null);
+    },
+  });
 
   // ── Level 2: Ficha editor ──────────────────────────────────────
   if (fichaAberta) {
     const itensSorted = [...itens].sort((a, b) => a.ordem - b.ordem);
+    const carrinhoIds = new Set(carrinho.map((c) => c.ex.id));
+    const bancFiltrado = banco.filter(
+      (e) => !buscaExPainel || e.nome.toLowerCase().includes(buscaExPainel.toLowerCase()) || (e.grupoMuscular ?? '').toLowerCase().includes(buscaExPainel.toLowerCase()),
+    );
+
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <button onClick={() => setFichaAberta(null)} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
+          <button onClick={() => { setFichaAberta(null); setPainelAberto(false); setCarrinho([]); }} className="flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" /> Voltar
-          </button>
-          <button onClick={() => setMostrarModalAdd(true)} className={addBtn}>
-            <Plus className="w-4 h-4" /> Adicionar Exercício
           </button>
         </div>
 
@@ -610,120 +628,259 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
             <h3 className="font-bold text-white">{fichaAberta.nome}</h3>
             <p className="text-xs text-gray-500">{itensSorted.length} exercício(s)</p>
           </div>
-          <button onClick={() => { if (confirm('Excluir esta ficha?')) mutDeletar.mutate(fichaAberta.id); }} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
+          <button onClick={() => setConfirmDelFichaId(fichaAberta.id)} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all">
             <Trash2 className="w-4 h-4" />
           </button>
         </div>
 
-        {itensSorted.length === 0 ? (
+        {itensSorted.length === 0 && !painelAberto ? (
           <div className="text-center py-12 text-gray-600">
             <Dumbbell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-            <p className="text-sm">Nenhum exercício adicionado. Clique em "Adicionar Exercício".</p>
+            <p className="text-sm">Nenhum exercício. Use o painel abaixo para adicionar.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            {itensSorted.map((item, idx) => (
-              <div key={item.id} className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl px-5 py-4 flex items-center justify-between group transition-colors">
-                <div className="flex items-center gap-4 min-w-0">
-                  <span className="text-xl font-black text-gray-700 w-6 text-center flex-shrink-0">{idx + 1}</span>
-                  <div className="min-w-0">
-                    <p className="font-semibold text-white truncate">{item.exercicioNome}</p>
-                    {item.grupoMuscular && <p className="text-xs text-gray-500">{item.grupoMuscular}</p>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0 ml-3">
-                  <div className="text-center min-w-[2.5rem]">
-                    <p className="text-lg font-bold text-emerald-400 leading-tight">{item.series}</p>
-                    <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">séries</p>
-                  </div>
-                  <span className="text-gray-700 font-bold">×</span>
-                  <div className="text-center min-w-[2.5rem]">
-                    <p className="text-lg font-bold text-teal-400 leading-tight">{item.repeticoes}</p>
-                    <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">reps</p>
-                  </div>
-                  {item.carga && (
-                    <>
-                      <span className="text-gray-700">·</span>
-                      <div className="text-center">
-                        <p className="text-sm font-semibold text-gray-300 leading-tight">{item.carga}</p>
-                        <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">carga</p>
+            {itensSorted.map((item, idx) => {
+              const editando = editandoItemId === item.id;
+              return (
+                <div key={item.id} className="bg-gray-900 border border-gray-800 hover:border-gray-700 rounded-2xl overflow-hidden transition-colors group">
+                  <div className="px-5 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <span className="text-xl font-black text-gray-700 w-6 text-center flex-shrink-0">{idx + 1}</span>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-white truncate">{item.exercicioNome}</p>
+                        {item.grupoMuscular && <p className="text-xs text-gray-500">{item.grupoMuscular}</p>}
                       </div>
-                    </>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+                      {!editando && (
+                        <>
+                          <div className="text-center min-w-[2.5rem]">
+                            <p className="text-lg font-bold text-emerald-400 leading-tight">{item.series}</p>
+                            <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">séries</p>
+                          </div>
+                          <span className="text-gray-700 font-bold">×</span>
+                          <div className="text-center min-w-[2.5rem]">
+                            <p className="text-lg font-bold text-teal-400 leading-tight">{item.repeticoes}</p>
+                            <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">reps</p>
+                          </div>
+                          {item.carga && (
+                            <>
+                              <span className="text-gray-700">·</span>
+                              <div className="text-center">
+                                <p className="text-sm font-semibold text-gray-300 leading-tight">{item.carga}</p>
+                                <p className="font-display uppercase tracking-wider text-[10px] text-gray-600">carga</p>
+                              </div>
+                            </>
+                          )}
+                          <button
+                            onClick={() => { setEditandoItemId(item.id); setEditItemForm({ series: item.series, repeticoes: item.repeticoes, carga: item.carga ?? '', observacoes: item.observacoes ?? '' }); }}
+                            className="p-1.5 rounded-lg text-gray-600 hover:text-emerald-400 hover:bg-emerald-500/10 transition-all opacity-0 group-hover:opacity-100 ml-1">
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button onClick={() => setConfirmDelItemId(item.id)} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                      {editando && (
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setEditandoItemId(null)} className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1">Cancelar</button>
+                          <button
+                            onClick={() => mutAtualizarItem.mutate({ itemId: item.id, dados: editItemForm })}
+                            disabled={mutAtualizarItem.isPending}
+                            className="flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold px-3 py-1.5 rounded-lg hover:bg-emerald-500/20 transition-all">
+                            {mutAtualizarItem.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                            Salvar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {editando && (
+                    <div className="border-t border-gray-800 px-5 py-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className={labelCls}>Séries</label>
+                          <input type="number" min={1} value={editItemForm.series} onChange={(e) => setEditItemForm((f) => ({ ...f, series: Number(e.target.value) }))} className={inputCls} autoFocus />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Repetições</label>
+                          <input value={editItemForm.repeticoes} onChange={(e) => setEditItemForm((f) => ({ ...f, repeticoes: e.target.value }))} placeholder="12 ou 8-12" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Carga</label>
+                          <input value={editItemForm.carga} onChange={(e) => setEditItemForm((f) => ({ ...f, carga: e.target.value }))} placeholder="20kg" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Observações</label>
+                          <input value={editItemForm.observacoes} onChange={(e) => setEditItemForm((f) => ({ ...f, observacoes: e.target.value }))} placeholder="Cadência..." className={inputCls} />
+                        </div>
+                      </div>
+                    </div>
                   )}
-                  <button onClick={() => { if (confirm('Remover exercício?')) mutDelItem.mutate(item.id); }} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100 ml-1">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
-        {mostrarModalAdd && (
-          <Modal titulo="Adicionar Exercício" onClose={closeAddModal}>
-            <div className="space-y-4">
-              {!formEx.exercicioId ? (
-                <>
-                  <div>
-                    <label className={labelCls}>Buscar exercício</label>
-                    <input value={buscaEx} onChange={(e) => setBuscaEx(e.target.value)} placeholder="Nome ou grupo muscular..." className={inputCls} autoFocus />
-                  </div>
-                  <div className="max-h-52 overflow-y-auto space-y-0.5 -mx-1 px-1">
-                    {bancFiltrado.length === 0 ? (
-                      <p className="text-center text-sm text-gray-600 py-6">Nenhum exercício encontrado</p>
-                    ) : (
-                      bancFiltrado.map((e) => (
-                        <button key={e.id} onClick={() => setFormEx((f) => ({ ...f, exercicioId: e.id, exercicioNome: e.nome, grupoMuscular: e.grupoMuscular ?? '' }))} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-gray-800 transition-colors group">
-                          <p className="text-sm font-semibold text-white group-hover:text-emerald-400 transition-colors">{e.nome}</p>
+        {/* ── Inline add panel ── */}
+        <div className={`bg-gray-900 border rounded-2xl overflow-hidden transition-all ${painelAberto ? 'border-emerald-500/30' : 'border-gray-800'}`}>
+          <button
+            onClick={() => { setPainelAberto((v) => !v); if (!painelAberto) { setCarrinho([]); setBuscaExPainel(''); } }}
+            className={`w-full flex items-center justify-between px-5 py-3.5 transition-colors ${painelAberto ? 'text-emerald-400' : 'text-gray-400 hover:text-white'}`}>
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Plus className={`w-4 h-4 transition-transform ${painelAberto ? 'rotate-45' : ''}`} />
+              {painelAberto ? 'Fechar painel' : 'Adicionar exercícios'}
+            </div>
+            {carrinho.length > 0 && (
+              <span className="text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-bold">
+                {carrinho.length} selecionado{carrinho.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </button>
+          {painelAberto && (
+            <div className="border-t border-emerald-500/20 p-4 space-y-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+                <input
+                  value={buscaExPainel}
+                  onChange={(e) => setBuscaExPainel(e.target.value)}
+                  placeholder="Buscar exercício ou grupo muscular..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/40 transition-all"
+                  autoFocus
+                />
+              </div>
+              <div className="max-h-48 overflow-y-auto -mx-1 px-1 space-y-0.5">
+                {bancFiltrado.length === 0 ? (
+                  <p className="text-center text-sm text-gray-600 py-4">Nenhum exercício encontrado</p>
+                ) : (
+                  bancFiltrado.map((e) => {
+                    const noCarrinho = carrinhoIds.has(e.id);
+                    return (
+                      <button
+                        key={e.id}
+                        onClick={() => {
+                          if (noCarrinho) {
+                            setCarrinho((c) => c.filter((ci) => ci.ex.id !== e.id));
+                          } else {
+                            setCarrinho((c) => [...c, { ex: e, series: 3, reps: '12', carga: '' }]);
+                          }
+                        }}
+                        className={`w-full text-left px-3 py-2.5 rounded-xl transition-colors flex items-center justify-between group/item ${noCarrinho ? 'bg-emerald-500/10 border border-emerald-500/20' : 'hover:bg-gray-800'}`}>
+                        <div className="min-w-0">
+                          <p className={`text-sm font-semibold truncate transition-colors ${noCarrinho ? 'text-emerald-400' : 'text-white group-hover/item:text-emerald-400'}`}>{e.nome}</p>
                           {e.grupoMuscular && <p className="text-xs text-gray-500">{e.grupoMuscular}</p>}
+                        </div>
+                        {noCarrinho && <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              {carrinho.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-gray-700/60">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Configurar</p>
+                  {carrinho.map((item) => (
+                    <div key={item.ex.id} className="bg-gray-800/60 border border-gray-700/50 rounded-xl px-3 py-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-semibold text-emerald-400 truncate">{item.ex.nome}</p>
+                        <button onClick={() => setCarrinho((c) => c.filter((ci) => ci.ex.id !== item.ex.id))} className="text-gray-600 hover:text-red-400 transition-colors ml-2 flex-shrink-0">
+                          <X className="w-3.5 h-3.5" />
                         </button>
-                      ))
-                    )}
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-bold text-emerald-400">{formEx.exercicioNome}</p>
-                      {formEx.grupoMuscular && <p className="text-xs text-gray-500">{formEx.grupoMuscular}</p>}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Séries</label>
+                          <input
+                            type="number" min={1} value={item.series}
+                            onChange={(e) => setCarrinho((c) => c.map((ci) => ci.ex.id === item.ex.id ? { ...ci, series: Number(e.target.value) } : ci))}
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg py-1.5 px-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-all" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Reps</label>
+                          <input
+                            value={item.reps}
+                            onChange={(e) => setCarrinho((c) => c.map((ci) => ci.ex.id === item.ex.id ? { ...ci, reps: e.target.value } : ci))}
+                            placeholder="12 ou 8-12"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg py-1.5 px-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-all" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Carga</label>
+                          <input
+                            value={item.carga}
+                            onChange={(e) => setCarrinho((c) => c.map((ci) => ci.ex.id === item.ex.id ? { ...ci, carga: e.target.value } : ci))}
+                            placeholder="20kg"
+                            className="w-full bg-gray-800 border border-gray-700 rounded-lg py-1.5 px-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-emerald-500 transition-all" />
+                        </div>
+                      </div>
                     </div>
-                    <button onClick={() => setFormEx((f) => ({ ...f, exercicioId: '', exercicioNome: '', grupoMuscular: '' }))} className="text-gray-600 hover:text-gray-400 transition-colors">
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelCls}>Séries</label>
-                      <input type="number" min={1} value={formEx.series} onChange={(e) => setFormEx((f) => ({ ...f, series: Number(e.target.value) }))} className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Repetições</label>
-                      <input value={formEx.repeticoes} onChange={(e) => setFormEx((f) => ({ ...f, repeticoes: e.target.value }))} placeholder="12 ou 8-12" className={inputCls} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className={labelCls}>Carga (opcional)</label>
-                    <input value={formEx.carga} onChange={(e) => setFormEx((f) => ({ ...f, carga: e.target.value }))} placeholder="Ex: 20kg, 50%" className={inputCls} />
-                  </div>
-                  <div>
-                    <label className={labelCls}>Observações (opcional)</label>
-                    <textarea value={formEx.observacoes} onChange={(e) => setFormEx((f) => ({ ...f, observacoes: e.target.value }))} rows={2} className={`${inputCls} resize-none`} placeholder="Cadência, técnica especial..." />
-                  </div>
-                  <div className="flex gap-3 pt-1">
-                    <button onClick={() => setFormEx((f) => ({ ...f, exercicioId: '', exercicioNome: '', grupoMuscular: '' }))} className={btnSecondary}>Voltar</button>
-                    <button onClick={() => mutAddEx.mutate()} disabled={mutAddEx.isPending} className={btnPrimary}>
-                      {mutAddEx.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Adicionar
-                    </button>
-                  </div>
-                </>
+                  ))}
+                  <button
+                    onClick={() => mutAddVarios.mutate(carrinho)}
+                    disabled={mutAddVarios.isPending}
+                    className={`${addBtn} w-full justify-center mt-1`}>
+                    {mutAddVarios.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Adicionar {carrinho.length} exercício{carrinho.length !== 1 ? 's' : ''}
+                  </button>
+                </div>
               )}
             </div>
-          </Modal>
+          )}
+        </div>
+
+        {/* Delete item confirm */}
+        {confirmDelItemId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                </div>
+                <h3 className="font-bold text-white">Remover exercício?</h3>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setConfirmDelItemId(null)} className={btnSecondary}>Cancelar</button>
+                <button
+                  onClick={() => { mutDelItem.mutate(confirmDelItemId); setConfirmDelItemId(null); }}
+                  disabled={mutDelItem.isPending}
+                  className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5">
+                  {mutDelItem.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Remover
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete ficha confirm */}
+        {confirmDelFichaId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+              <div className="text-center space-y-2">
+                <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
+                  <Trash2 className="w-5 h-5 text-red-400" />
+                </div>
+                <h3 className="font-bold text-white">Excluir ficha de treino?</h3>
+                <p className="text-sm text-gray-400">Esta ação não pode ser desfeita.</p>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button onClick={() => setConfirmDelFichaId(null)} className={btnSecondary}>Cancelar</button>
+                <button
+                  onClick={() => { mutDeletar.mutate(confirmDelFichaId); setConfirmDelFichaId(null); }}
+                  disabled={mutDeletar.isPending}
+                  className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5">
+                  {mutDeletar.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Excluir
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
     );
   }
+
+  if (isLoading) return <div className="flex justify-center pt-10"><Loader2 className="w-6 h-6 animate-spin text-emerald-500" /></div>;
 
   // ── Level 1: Ficha list ────────────────────────────────────────
   const fichasAtivas = fichas.filter((f) => f.ativo);
@@ -752,7 +909,7 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
                 <button onClick={() => setFichaAberta(f)} className="px-4 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold hover:bg-emerald-500/20 transition-all">
                   Editar
                 </button>
-                <button onClick={() => { if (confirm('Excluir ficha?')) mutDeletar.mutate(f.id); }} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
+                <button onClick={() => setConfirmDelFichaId(f.id)} className="p-1.5 rounded-lg text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
@@ -776,6 +933,29 @@ function AbaFichaTreino({ alunoId }: { alunoId: string }) {
             </div>
           </div>
         </Modal>
+      )}
+
+      {confirmDelFichaId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center mx-auto">
+                <Trash2 className="w-5 h-5 text-red-400" />
+              </div>
+              <h3 className="font-bold text-white">Excluir ficha de treino?</h3>
+              <p className="text-sm text-gray-400">Esta ação não pode ser desfeita.</p>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setConfirmDelFichaId(null)} className={btnSecondary}>Cancelar</button>
+              <button
+                onClick={() => { mutDeletar.mutate(confirmDelFichaId); setConfirmDelFichaId(null); }}
+                disabled={mutDeletar.isPending}
+                className="flex-1 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-1.5">
+                {mutDeletar.isPending && <Loader2 className="w-4 h-4 animate-spin" />} Excluir
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Histórico de realizações do paciente */}
@@ -1503,7 +1683,7 @@ export default function PerfilAluno() {
             <ArrowLeft className="w-5 h-5" />
           </button>
           {aluno.fotoPerfil ? (
-            <img src={`data:image/jpeg;base64,${aluno.fotoPerfil}`} alt={aluno.nome} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 ring-2 ring-emerald-500/30" />
+            <img src={aluno.fotoPerfil} alt={aluno.nome} className="w-16 h-16 rounded-2xl object-cover flex-shrink-0 ring-2 ring-emerald-500/30" />
           ) : (
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-emerald-500/25">
               <span className="text-white font-black text-2xl">{aluno.nome.charAt(0).toUpperCase()}</span>

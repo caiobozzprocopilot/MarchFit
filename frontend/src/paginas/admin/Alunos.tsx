@@ -261,7 +261,7 @@ export default function Alunos() {
               >
                 {aluno.fotoPerfil ? (
                   <img
-                    src={`data:image/jpeg;base64,${aluno.fotoPerfil}`}
+                    src={aluno.fotoPerfil}
                     alt={aluno.nome}
                     className="w-10 h-10 rounded-full object-cover"
                   />
